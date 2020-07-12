@@ -1,0 +1,93 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM 7 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm \- non-preemtive thread hierarchy manager
+.SH DESCRIPTION
+.BR Nthm
+(pronounced like "anthem") is a C library intended for applications
+involving dynamic hierarchies of threads creating other threads that
+would be difficult or impossible to plan at compile-time. It is
+especially appropriate when communication between threads fits a
+pattern of input data being sent to each thread on creation from the
+one that creates it and output being sent back to the creating thread
+on termination.  While enabling some flexibility about
+synchronization, the API is simpler than direct use of
+.BR pthreads
+primitives and might let some applications to avoid explicit locking
+entirely.
+.P
+.BR Nthm
+presents a helpful abstraction in the way of a single-use,
+unidirectional pipe created for each thread when it is started and
+tethered by default as a descendent of the one starting it. 
+.BR Nthm
+keeps a record of the threads tethered above and below each one, so
+that user-written code can easily invoke operations like these with
+respect to the set of all pipes they have created:
+.TP
+*
+Read from the pipe of a specific thread when it finishes.
+.TP
+*
+Wait for the next thread to finish (whatever thread it may be) and
+read from its pipe.
+.TP
+*
+Tell one thread or all to hurry up by returning an approximate result
+if possible.
+.TP
+*
+Non-preemptively shut down one or all remaining threads.
+.P
+If the threads do not operate on any shared data, then no further
+synchronization primitives are needed in user code. Alternatively,
+.BR nthm
+is compatible with 
+.BR pthreads
+locks and conditions.
+.P
+.BR Nthm
+handles all memory management associated with maintaining the
+thread hierarchy, but control over flattening or otherwise
+reorganizing it is also available to user code through explicit
+tethering and untethering operations.
+.SH SEE ALSO
+.BR nthm_open (3),
+.BR nthm_read (3),
+.BR nthm_select (3)
+.br
+.BR nthm_truncate (3),
+.BR nthm_truncate_all (3),
+.BR nthm_truncated (3)
+.br
+.BR nthm_kill (3),
+.BR nthm_kill_all (3),
+.BR nthm_killed (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3)
+.br
+.BR nthm_blocked (3),
+.BR nthm_busy (3)
+.br
+.BR nthm_strerror (3),
+.BR pthreads (7)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE

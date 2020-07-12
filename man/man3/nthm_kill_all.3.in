@@ -1,0 +1,92 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM_KILL_ALL 3 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm_kill_all \- request a shutdown of all locally tethered threads
+.SH SYNOPSIS
+#include <nthm.h>
+.sp 1
+void
+.BR nthm_kill_all
+(
+int
+.I *err
+)
+.SH DESCRIPTION
+The
+.BR nthm_kill_all
+function informs all threads created with
+.BR nthm_open
+in the current thread's context
+or tethered to it with
+.BR nthm_tether
+that they should shut themselves down because their
+results will be ignored and further activities curtailed.
+.P
+The semantics of
+.BR nthm_kill_all
+is identical to that of calling
+.BR nthm_kill
+individually for each tethered thread.
+Notably it is an error to kill the same thread both individually and by way
+of
+.BR nthm_kill_all.
+See the manual page of
+.BR nthm_kill
+for further details.
+.SH RETURN VALUE
+none
+.SH ERRORS
+Error codes are reported in the
+.I *err
+parameter, with any non-zero value indicating an error.
+.TP
+*
+If
+.I *err
+is non-zero on entry,
+then it remains unchanged.
+.TP
+*
+If
+.I *err
+is zero on entry and non-zero on exit,
+then an internal consistency check has failed.
+Bug reports are gratefully received.
+.SH SEE ALSO
+.BR nthm (7),
+.BR nthm_open (3),
+.BR nthm_select (3),
+.BR nthm_read (3)
+.br
+.BR nthm_kill (3),
+.BR nthm_killed (3),
+.BR nthm_blocked (3)
+.br
+.BR nthm_truncate (3),
+.BR nthm_truncated (3),
+.BR nthm_truncate_all (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3)
+.br
+.BR nthm_strerror (3),
+.BR nthm_busy (3)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE

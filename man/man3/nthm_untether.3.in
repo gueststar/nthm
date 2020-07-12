@@ -1,0 +1,170 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM_UNTETHER 3 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm_tether \- start watching a given thread from the current thread
+.sp 1
+nthm_untether \- stop watching a given thread from the current thread
+.SH SYNOPSIS
+#include <nthm.h>
+.sp 1
+void
+.BR nthm_tether
+(
+.BR nthm_pipe
+.I source
+, int
+.I *err
+)
+.sp 1
+void
+.BR nthm_untether
+(
+.BR nthm_pipe
+.I source
+, int
+.I *err
+)
+.SH DESCRIPTION
+Threads managed by the
+.BR nthm
+library may be envisioned as forming a tree in which some are
+descendents of others.  Whenever an application creates a thread by calling
+.BR nthm_open,
+the created thread becomes a descendent of the
+caller's thread. Functions such as
+.BR nthm_select,
+.BR nthm_blocked,
+.BR nthm_kill_all,
+and
+.BR nthm_truncate_all
+rely on this relationship to operate on the descendents of the caller's thread
+or to query them.
+.P
+The
+.BR nthm_tether
+and
+.BR nthm_untether
+functions allow applications explicit control over this tree.
+Whenever
+.BR nthm_untether
+is called on a pipe
+.I source
+whose thread is currently a descendent of the caller's thread, it
+stops being a descendent of the caller's thread, thereafter to be
+ignored by the functions mentioned above.
+.P
+Whereas tethered threads are automatically killed when the thread
+above them in the tree terminates, nothing precludes the pipe of an
+untethered thread being passed via the return value on termination or
+in the input data when a new pipe is opened. Application code running
+in the receiving thread may then call
+.BR nthm_tether
+to acheive the same effect as having opened it locally.
+.P
+The metadata stored by
+.BR nthm
+about untethered threads are not automatically reclaimed unless the
+threads are tethered subsequently in some context. There is no
+requirement to follow untethering with tethering in a new context, but
+in the alternative, untethered threads should be individually read or
+killed with
+.BR nthm_read
+or
+.BR nthm_kill
+to avoid memory leaks.
+.SH RETURN VALUE
+none
+.SH ERRORS
+.P
+If
+.I *err
+is non-zero on entry, then
+.BR nthm_tether
+and
+.BR nthm_untether
+leave it unchanged. If
+.I *err
+is zero on entry and non-zero on exit, it may be assigned one of the
+following values for the reasons noted, and the requested operation
+will not have completed.
+.TP
+.BR NTHM_NULPIP
+The
+.I source
+parameter is a NULL pointer.
+.TP
+.BR NTHM_INVPIP
+The
+.I source
+parameter is not a NULL pointer but points to an invalid or corrupted
+pipe, or points nowhere in particular but fortunately did not cause a
+segfault.
+.TP
+.BR NTHM_NOTDRN
+The caller can neither tether nor untether the
+.I source
+pipe's thread to the caller's thread because it is tethered presently
+to some other thread than that of the caller.
+.TP
+.BR NTHM_KILLED
+The
+.BR nthm_tether
+function was interrupted because the caller's thread was killed.
+It may have been killed directly with
+.BR nthm_kill
+or
+.BR nthm_kill_all
+or as a consequence of a thread to which it is tethered
+being killed or terminating.
+.TP
+.BR ENOMEM
+Available memory is insufficient for
+all updates necessary to
+.BR nthm_tether.
+.P
+Various undocumented error codes within the range of
+.BR -NTHM_MIN_ERR
+to
+.BR -NTHM_MAX_ERR
+might also be reported for developer diagnostics if internal
+consistency checks fail. These codes are not actionable by users
+but may be helpful in bug reports.
+.SH SEE ALSO
+.BR nthm (7),
+.BR nthm_open (3),
+.BR nthm_select (3)
+.br
+.BR nthm_truncate (3),
+.BR nthm_truncate_all (3),
+.BR nthm_truncated (3)
+.br
+.BR nthm_kill (3),
+.BR nthm_kill_all (3),
+.BR nthm_killed (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3),
+.BR nthm_blocked (3)
+.br
+.BR nthm_strerror (3),
+.BR nthm_busy (3),
+.BR pthreads (7)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE

@@ -1,0 +1,33 @@
+find_program(FIND find)
+find_program(DATE date)
+
+if (NOT FIND)
+   message(FATAL_ERROR "find utility not found")
+endif ()
+
+if (NOT DATE)
+   message(FATAL_ERROR "date utility not found")
+endif ()
+
+set (VERSION @nthm_VERSION_MAJOR@.@nthm_VERSION_MINOR@.@nthm_VERSION_PATCH@)
+
+set (URL @nthm_HOMEPAGE_URL@)
+
+set (EMAIL @MAINTAINER_EMAIL@)
+
+execute_process(
+  OUTPUT_VARIABLE DATE_VERSION_NTHM_MANUAL
+  COMMAND ${DATE} +"%B %d, %Y\" \"NTHM VERSION @nthm_VERSION_MAJOR@.@nthm_VERSION_MINOR@.@nthm_VERSION_PATCH@\" \"NTHM MANUAL")
+
+execute_process(
+  OUTPUT_VARIABLE MAN_FILES
+  WORKING_DIRECTORY @CMAKE_CURRENT_SOURCE_DIR@
+  COMMAND ${FIND} man -name "*.in"
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+string(REPLACE "\n" ";" MAN_FILES ${MAN_FILES})
+
+foreach(MAN_FILE IN LISTS MAN_FILES)
+  string(REGEX REPLACE ".in$" "" MAN_FILE ${MAN_FILE})
+  configure_file(@CMAKE_CURRENT_SOURCE_DIR@/${MAN_FILE}.in @CMAKE_CURRENT_BINARY_DIR@/configured_${MAN_FILE})
+endforeach ()

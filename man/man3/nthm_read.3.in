@@ -1,0 +1,187 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM_READ 3 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm_read \- read a result from a pipe and reclaim the pipe
+.SH SYNOPSIS
+#include <nthm.h>
+.sp 1
+void *
+.BR nthm_read
+(
+.BR nthm_pipe
+.I source
+, int
+.I *err
+)
+.SH DESCRIPTION
+The
+.BR nthm_read
+function
+is used for collecting the results computed in threads created by
+.BR nthm_open.
+The
+.I source
+parameter should be an
+.BR nthm_pipe
+returned from a prior call to
+.BR nthm_open
+or
+.BR nthm_select.
+.P
+If the pipe's thread is still running when
+.BR nthm_read
+is called, the caller is blocked until the thread finishes.
+If the thread has finished running beforehand, then
+.BR nthm_read
+immediately reads its return value and returns it to the caller.
+.P
+Pipes returned by
+.BR nthm_select
+are always readable immediately although
+.BR nthm_select
+itself may sometimes block.
+Applications can check whether a call to
+.BR nthm_read
+would block by polling
+.BR nthm_blocked
+with the same
+.I source,
+and can check whether
+.BR nthm_select
+would block by polling
+.BR nthm_busy.
+.P
+The
+.I source
+parameter is deallocated upon return from
+.BR nthm_read.
+Any subsequent reference to it has undefined effects.
+.SH RETURN VALUE
+If
+.BR nthm_read
+does not succeed, it returns a NULL value.
+.P
+If it succeeds, then it
+returns the result computed by the application code in the pipe's
+thread, which may be NULL or non-NULL depending on the application.
+.P
+For well-behaved applications, NULL return values can be disambiguated by
+the error code assigned to the
+.I *err
+parameter.
+.SH ERRORS
+If
+.I *err
+is zero on entry and
+.BR nthm_read
+succeeds, then
+.I *err
+is set by the application code whose pipe has been read.  If the
+application returns a NULL value and also sets
+.I *err
+to a non-zero value, it can
+avoid giving the impression that
+.BR nthm_read
+has not succeeded by using error codes that differ from those
+listed below and any within the range of
+.BR -NTHM_MIN_ERR
+to
+.BR -NTHM_MAX_ERR.
+.P
+If
+.I *err
+is non-zero on entry, then
+.BR nthm_read
+leaves it unchanged. Any error status
+reported by the application is
+inaccessible in this case although
+.BR nthm_read
+still returns the application code's return value if successful.
+.P
+If
+.I *err
+is zero on entry and
+.BR nthm_read
+does not succeed,
+then it may set
+.I *err
+to one of the following codes for the reasons noted.
+.TP
+.BR NTHM_NULPIP
+The
+.I source
+parameter is a NULL pointer.
+.TP
+.BR NTHM_INVPIP
+The
+.I source
+parameter is not a NULL pointer but points to an invalid or corrupted
+pipe, or points nowhere in particular but fortunately did not cause a
+segfault.
+.TP
+.BR NTHM_NOTDRN
+The
+.I source
+pipe is not safely readable because the caller's thread is not its
+"drain", which can happen only if
+.I source
+was created in a separate thread from the caller and not untethered
+from it.
+.TP
+.BR NTHM_KILLED
+Reading was interrupted because the caller's thread was killed with
+.BR nthm_kill
+or
+.BR nthm_kill_all.
+.TP
+.BR ENOMEM
+There is insufficient memory to read from a pipe. This error should be
+possible only when an untethered pipe is implicitly tethered to the
+caller's thread prior to reading.
+.P
+Various undocumented error codes within the range of
+.BR -NTHM_MIN_ERR
+to
+.BR -NTHM_MAX_ERR
+might also be reported for developer diagnostics if internal
+consistency checks fail. These codes are not actionable by users
+but may be helpful in bug reports.
+.SH SEE ALSO
+.BR nthm (7),
+.BR nthm_open (3),
+.BR nthm_select (3)
+.br
+.BR nthm_truncate (3),
+.BR nthm_truncate_all (3),
+.BR nthm_truncated (3)
+.br
+.BR nthm_kill (3),
+.BR nthm_kill_all (3),
+.BR nthm_killed (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3),
+.BR nthm_blocked (3)
+.br
+.BR nthm_strerror (3),
+.BR nthm_busy (3),
+.BR pthreads (7)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE

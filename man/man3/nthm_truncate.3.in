@@ -1,0 +1,165 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM_TRUNCATE 3 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm_truncate \- tell a thread to finish up by approximating its output
+.P
+nthm_truncated \- poll the current thread's the truncation status
+.SH SYNOPSIS
+#include <nthm.h>
+.sp 1
+void
+.BR nthm_truncate
+(
+.BR nthm_pipe
+.I source
+, int
+.I *err
+)
+.sp 1
+int
+.BR nthm_truncated
+(
+int *
+.I err
+)
+.SH DESCRIPTION
+The
+.BR nthm_truncate
+function informs a thread created by
+.BR nthm_open
+and associated with the pipe
+.I source
+that it should return a result sooner than usual by computing an
+approximate solution. Application code running in the
+.I source
+thread can detect that
+truncated output has been requested by polling
+.BR nthm_truncated.
+The application is free to ignore or to interpret this condition in any
+user-specified way.
+.P
+After the
+.I source
+thread is truncated,
+.BR nthm_truncated
+will be able to report this status not only to code running in the
+.I source
+thread but to code running in any thread it creates or has created with
+.BR nthm_open
+unless and until the latter is untethered
+with
+.BR nthm_untether.
+The same goes for threads created in threads created in the
+.I source
+thread, and so on.
+.P
+It is acceptable to call
+.BR nthm_truncate
+more than once with the same
+.I source
+as a way of indicating increasingly emphatic degrees of truncation.
+Each additional call increments the value reportable by
+.BR nthm_truncated.
+However, if a thread is a descendent of multiple ancestors with different degrees of truncation,
+.BR nthm_truncated
+reports only the value associated with the nearest truncated ancestor.
+.SH RETURN VALUE
+There is no return value from
+.BR nthm_truncate,
+but
+.BR nthm_truncated
+returns a value indicative of the current thread's truncation status
+up to a platform-specific maximum of
+.BR UINT_MAX
+or at least 4294967295.
+.SH ERRORS
+Error codes are reported in the
+.I *err
+parameter, with any non-zero value indicating an error.
+.TP
+*
+If
+.I *err
+is non-zero on entry,
+then it is left unchanged whether or not
+the function succeeds.
+.TP
+*
+If
+.I *err
+is zero on entry and exit, then
+.BR nthm_truncate
+or
+.BR nthm_truncated
+has succeeded.
+.TP
+*
+If
+.I *err
+is zero on entry and non-zero on exit, then the function has not
+succeeded and one of the following codes may be reported due to the
+respective condition.
+.BR nthm_open
+and therefore can not be truncated.
+.TP
+.BR NTHM_NULPIP
+The
+.I source
+is a NULL pointer.
+.TP
+.BR NTHM_INVPIP
+The
+.I source
+is not a NULL pointer but points to an invalid or corrupted
+pipe, or points nowhere in particular but fortunately did not cause a
+segfault.
+.TP
+.BR NTHM_NOTDRN
+The
+.I source
+thread is not safe to truncate because the caller's thread is not its
+"drain", which can happen only if
+.I source
+was created in a thread other than the current one and not untethered
+from it.
+.P
+Any other error code not present intially indicates a bug in
+.BR nthm.
+Bug reports are gratefully received.
+.SH SEE ALSO
+.BR nthm (7),
+.BR nthm_open (3),
+.BR nthm_select (3),
+.BR nthm_read (3)
+.br
+.BR nthm_truncate_all (3),
+.BR nthm_blocked (3)
+.br
+.BR nthm_kill (3),
+.BR nthm_kill_all (3),
+.BR nthm_killed (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3),
+.br
+.BR nthm_strerror (3),
+.BR nthm_busy (3)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE

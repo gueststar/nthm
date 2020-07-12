@@ -1,0 +1,103 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM_BLOCKED 3 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm_blocked \- test whether all open pipes are busy
+.SH SYNOPSIS
+#include <nthm.h>
+.sp 1
+.BR int
+.BR nthm_blocked
+( int
+.I *err
+)
+.SH DESCRIPTION
+The
+.BR nthm_blocked
+function can test whether
+.BR nthm_select
+would block because there are pipes with threads tethered to the
+current context that are still running but none ready to be read.
+.SH RETURN VALUE
+A non-zero return value means a call to
+.BR nthm_select
+would have blocked at the time
+.BR nthm_blocked
+was called.
+.P
+A zero return value from a successful call to
+.BR nthm_blocked
+means
+.BR nthm_select
+would have returned immediately to the caller without blocking.
+.P
+An unsuccessful call to
+.BR nthm_blocked
+always returns a zero value.
+Return values of zero can be disambiguated by the value of
+.I *err.
+.SH ERRORS
+Error codes are reported in
+.I *err
+with any non-zero value indicating an error.
+.TP
+*
+If
+.I *err
+is non-zero on entry, then it is left unchanged whether or not
+.BR nthm_blocked
+succeeds.
+.TP
+*
+If
+.I *err
+is zero on entry and exit, then
+.BR nthm_blocked
+has succeeded.
+.TP
+*
+If
+.I *err
+is zero on entry and non-zero on exit, then
+.BR nthm_blocked
+has detected a failure of some internal consistency check indicative
+of a bug. The specific code reported may be helpful in bug reports to
+developers.
+.SH SEE ALSO
+.BR nthm (7),
+.BR nthm_open (3),
+.BR nthm_select (3),
+.BR nthm_read (3)
+.br
+.BR nthm_truncate (3),
+.BR nthm_truncate_all (3),
+.BR nthm_truncated (3)
+.br
+.BR nthm_kill (3),
+.BR nthm_kill_all (3),
+.BR nthm_killed (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3)
+.br
+.BR nthm_strerror (3),
+.BR nthm_busy (3),
+.BR pthreads (7)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE

@@ -1,0 +1,187 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM_KILL 3 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm_kill \- request shutdown of a given thread
+.sp 1
+nthm_killed \- poll the liveness status of the current thread
+.SH SYNOPSIS
+#include <nthm.h>
+.sp 1
+void
+.BR nthm_kill
+(
+.BR nthm_pipe
+.I source
+, int
+.I *err
+)
+.sp 1
+int
+.BR nthm_killed
+(
+int
+.I *err
+)
+.SH DESCRIPTION
+Calling
+.BR nthm_kill
+on a pipe
+.I source
+has these effects on the application code running in the thread
+associated with the pipe:
+.TP
+*
+Any blocking call to
+.BR nthm_read
+or
+.BR nthm_select
+in progress is interrupted and
+an error status of
+.BR NTHM_KILLED
+applies.
+.TP
+*
+All subsequent calls to
+.BR nthm_open,
+.BR nthm_read,
+.BR nthm_select,
+and
+.BR nthm_tether
+are also disabled
+with status
+.BR NTHM_KILLED.
+.TP
+*
+The
+.BR nthm_killed
+function returns a non-zero result when polled.
+.TP
+*
+The result the application returns and error status it sets on exit
+are inaccessible and ignored.
+.P
+The best thing for the application code in a killed thread to do is to
+shut down in some orderly way appropriate for the application, such as
+by releasing any resources it holds. However, it need not kill any
+threads tethered to itself because they are killed automatically on
+exit.
+.P
+Orderly shutdowns notwithstanding, careless use of
+.BR nthm_kill
+incurs a risk of memory leaks when reading of heap-allocated storage
+is interrupted or ignored. The risk is mitigated
+by not using
+.BR nthm_kill
+on threads whose pipes may convey pointers to otherwise unreachable
+memory. Consider
+.BR nthm_truncate
+as an alternative.
+.P
+It is an error to call
+.BR nthm_kill
+more than once with the same
+.I source
+or to make any further reference to the killed
+.I source
+afterwards.
+.SH RETURN VALUE
+There is no return value for
+.BR nthm_kill,
+but a successful call to
+.BR nthm_killed
+returns non-zero it the current thread has been killed and zero otherwise.
+An unsuccessful call to
+.BR nthm_killed
+always returns zero.
+.SH ERRORS
+Error codes are reported in the
+.I *err
+parameter, with any non-zero value indicating an error.
+.TP
+*
+If
+.I *err
+is non-zero on entry,
+then it is left unchanged whether or not
+the function succeeds.
+.TP
+*
+If
+.I *err
+is zero on entry and exit, then
+.BR nthm_kill
+or
+.BR nthm_killed
+has succeeded.
+.TP
+*
+If
+.I *err
+is zero on entry and non-zero on exit, then the function has not
+succeeded and one of the following codes may be reported due to the
+respective condition.
+.BR nthm_open
+and therefore can not be killed by
+.BR nthm_kill.
+.TP
+.BR NTHM_NULPIP
+The
+.I source
+is a NULL pointer.
+.TP
+.BR NTHM_INVPIP
+The
+.I source
+is not a NULL pointer but points to an invalid or corrupted
+pipe, or points nowhere in particular but fortunately did not cause a
+segfault.
+.TP
+.BR NTHM_NOTDRN
+The
+.I source
+thread is not safe to kill because the caller's thread is not its
+"drain", which can happen only if
+.I source
+was created in a thread other than the current one and not untethered
+from it.
+.P
+Any other error code not present intially indicates a bug in
+.BR nthm.
+Bug reports are gratefully received.
+.SH SEE ALSO
+.BR nthm (7),
+.BR nthm_open (3),
+.BR nthm_select (3),
+.BR nthm_read (3)
+.br
+.BR nthm_truncate (3),
+.BR nthm_truncated (3),
+.BR nthm_truncate_all (3)
+.br
+.BR nthm_kill_all (3),
+.BR nthm_blocked (3),
+.BR nthm_busy (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3)
+.br
+.BR nthm_strerror (3)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE

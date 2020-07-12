@@ -1,0 +1,34 @@
+
+// Tests have to be able to sum the numbers from 1 to LAST_TERM
+// without overflowing.
+
+#cmakedefine IS64BIT
+
+#ifdef IS64BIT
+#define LAST_TERM 0xffffffff
+#define EXPECTED_CUMULATIVE_SUM 9223372030412324865
+#else
+#define LAST_TERM 0xffff
+#define EXPECTED_CUMULATIVE_SUM 2147385345
+#endif
+
+// Use sys/random if available to seed the random number generator,
+// but seed it with the address of main() otherwise.
+
+#cmakedefine RANDOM
+
+#ifdef RANDOM
+#include <sys/random.h>
+#define GETRANDOM(seed) getrandom(&seed, sizeof (seed), 0)
+#else
+#define GETRANDOM(seed) seed = (uintptr_t) &main
+#endif
+
+typedef struct interval_struct *interval;
+
+struct interval_struct // a pair of unsigned integers specifying a set of consecutive integers
+{
+  int depth;
+  uintptr_t start;     // the first term in the interval
+  uintptr_t count;     // the number of terms in the interval
+};

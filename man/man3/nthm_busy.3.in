@@ -1,0 +1,115 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM_BUSY 3 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm_busy \- inquire as to whether a thread has finished running
+.SH SYNOPSIS
+#include <nthm.h>
+.sp 1
+int
+.BR nthm_busy
+(
+.BR nthm_pipe
+.I source
+, int
+.I *err
+)
+.SH DESCRIPTION
+The
+.BR nthm_busy
+function polls the given pipe
+.I source
+to ascertain whether a successful call to
+.BR nthm_read
+on
+.I source
+would return immediately to the caller with a completed result
+or would block because the
+.I source
+thread has not finished computing one.
+.SH RETURN VALUE
+If
+.BR nthm_busy
+succeeds, then it returns
+non-zero for threads that are still running and zero for threads that
+are finished running.
+.P
+If it does not succeed, then it returns zero.
+.P
+The caller can disambiguate a return value of zero by the code
+assigned to the
+.I *err
+parameter.
+.SH ERRORS
+Error codes are reported in the
+.I *err
+parameter, with any non-zero value indicating an error.
+.TP
+*
+If
+.I *err
+is non-zero on entry, then it is left unchanged.
+.TP
+*
+If
+.I *err
+is zero on entry and exit, then
+.BR nthm_busy
+has succeeded.
+.TP
+*
+If
+.I *err
+is zero on entry and non-zero on exit, then
+.BR nthm_busy
+has not succeeded and will report one of the following conditions
+for the reason noted.
+.TP
+.BR NTHM_NULPIP
+The
+.I source
+parameter is a NULL pointer.
+.TP
+.BR NTHM_INVPIP
+The
+.I source
+parameter is not a NULL pointer but points to an invalid or corrupted
+pipe, or points nowhere in particular but fortunately did not cause a
+segfault.
+.SH SEE ALSO
+.BR nthm (7),
+.BR nthm_open (3),
+.BR nthm_select (3)
+.br
+.BR nthm_truncate (3),
+.BR nthm_truncate_all (3),
+.BR nthm_truncated (3)
+.br
+.BR nthm_kill (3),
+.BR nthm_kill_all (3),
+.BR nthm_killed (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3),
+.BR nthm_blocked (3)
+.br
+.BR nthm_strerror (3),
+.BR pthreads (7)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE
