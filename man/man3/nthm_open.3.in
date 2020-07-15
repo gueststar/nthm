@@ -19,17 +19,25 @@ nthm_open \- start a new thread and return a pipe from it
 .sp 1
 .BR nthm_pipe
 .BR nthm_open
-(void * (*
+(nthm_worker
 .I operator
-)(void *, int *),
-                     void *
+, void *
 .I operand
-,
-                     int
+, int
 .I *err
 )
 .SH DESCRIPTION
-The function
+The
+.I operator
+argument is a pointer to a function that takes a
+.BR void
+pointer and an
+.BR int
+pointer and returns a
+.BR void
+pointer.  Compatible function pointers can be cast as such by the
+.BR nthm_worker
+type alias. The function
 .BR nthm_open
 passes the parameters
 .I operand
@@ -50,7 +58,8 @@ as if the caller had invoked
 .sp 1
 but runs
 .I operator
-in a separate thread from the caller.  On 32-bit systems, the
+in a separate thread from the caller.
+On 32-bit systems, the
 usable stack size allocated to the created thread is limited to
 .BR NTHM_STACK_MIN
 or roughly 16 Kbytes with a view to conserving virtual address
@@ -97,7 +106,7 @@ the pipe.
 For example,
 .sp 1
 .nf
-   my_pipe = nthm_open (&my_function, &some_data, err);
+   my_pipe = nthm_open ((nthm_worker) &my_function, &some_data, err);
    ...
    retval = nthm_read (my_pipe, err);
 .fi

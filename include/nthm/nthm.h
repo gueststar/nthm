@@ -14,6 +14,8 @@
 #define NTHM_INVPIP (-19)
 #define NTHM_KILLED (-20)
 
+typedef void *(*nthm_worker)(void *,int *);  // the type of function passed to nthm_open
+
 typedef struct nthm_pipe_struct *nthm_pipe;   // to be treated as opaque in user application code
 
 // translate an error code into a readable message
@@ -22,7 +24,7 @@ nthm_strerror (int err);
 
 // start a new thread and return its pipe
 extern nthm_pipe
-nthm_open (void *(*operator)(void *, int *), void *operand, int *err);
+nthm_open (nthm_worker operator, void *operand, int *err);
 
 // collectively poll the finishers
 extern int

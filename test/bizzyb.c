@@ -39,7 +39,7 @@ main(argc, argv)
   err = 0;
   for (i = 0; err ? 0 : (i <= 1); i++)
 	 {
-		source = nthm_open ((void *(*)(void *,int *)) &bizzy_bee, x, &err);
+		source = nthm_open ((nthm_worker) &bizzy_bee, x, &err);
 		if ((! source) ? 1 : err ? 1 : (! nthm_busy (source, &err)) ? 1 : ! nthm_blocked (&err))
 		  {
 			 printf (err ? "bizzyb failed\n%s\n" : "bizzyb failed\n", nthm_strerror(err));

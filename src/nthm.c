@@ -1737,7 +1737,7 @@ nthm_strerror (err)
 
 nthm_pipe
 nthm_open (operator, operand, err)
-	  void *(*operator)(void *, int *);
+	  nthm_worker operator;
 	  void *operand;
 	  int *err;
 

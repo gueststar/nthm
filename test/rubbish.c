@@ -57,7 +57,7 @@ approximate_sum_of_interval (x, err)
 				  subinterval->start = start;
 				  subinterval->count = count;
 				  subinterval->depth = x->depth + 1;
-				  if (! (source = nthm_open ((void *(*)(void *,int *)) &approximate_sum_of_interval, (void *) subinterval, err)))
+				  if (! (source = nthm_open ((nthm_worker) &approximate_sum_of_interval, (void *) subinterval, err)))
 					 free (subinterval);
 				  else if (! (rand () & 0x3))
 					 nthm_truncate (source, err);

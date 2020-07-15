@@ -128,7 +128,7 @@ int main(argc, argv)
 		  {
 			 x->start = start;
 			 x->count = count;
-			 push (nthm_open ((void *(*)(void *,int *)) &sum_of_interval, (void *) x, &err), &pipes, &err);
+			 push (nthm_open ((nthm_worker) &sum_of_interval, (void *) x, &err), &pipes, &err);
 		  }
 		start = start + count;
 	 }

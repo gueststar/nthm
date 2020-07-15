@@ -43,7 +43,7 @@ sum_of_interval (x, err)
 				  subinterval->start = start;
 				  subinterval->count = count;
 				  subinterval->depth = x->depth + 1;
-				  if (! nthm_open ((void *(*)(void *,int *)) &sum_of_interval, (void *) subinterval, err))
+				  if (! nthm_open ((nthm_worker) &sum_of_interval, (void *) subinterval, err))
 					 free (subinterval);
 				}
 			 start = start + count;
