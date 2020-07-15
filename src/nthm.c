@@ -77,7 +77,7 @@ typedef struct thread_spec_struct *thread_spec;  // passed to the manager functi
 struct thread_spec_struct
 {
   nthm_pipe pipe;
-  void *(*operator)(void *, int *);
+  nthm_worker operator;
   void *operand;
 };
 
@@ -1132,7 +1132,7 @@ flush (drain, err)
 static thread_spec
 thread_spec_of (source, operator, operand, err)
 	  nthm_pipe source;
-	  void *(*operator)(void *, int *);
+	  nthm_worker operator;
 	  void *operand;
 	  int *err;
 
