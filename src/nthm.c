@@ -1660,9 +1660,9 @@ teardown ()
   int err;
 
   err = 0;
-  globally_catch (&err);
   eradicate (&err);
   synchronize (&err);
+  globally_catch (&err);
   release_pthread_resources (&err);
   if (err)
 	 fprintf (stderr, "%s\n", nthm_strerror (err)); 
