@@ -2,9 +2,12 @@
 #ifndef NTHM_H
 #define NTHM_H 1
 
-#define NTHM_MIN_ERR 16     // range of negative numbers reserved for error codes
+// range of negative numbers reserved for error codes
+#define NTHM_MIN_ERR 16
 #define NTHM_MAX_ERR 255
-#define NTHM_STACK_MIN 16384  // in 32-bit mode, the stack size in bytes in excess of PTHREAD_STACK_MIN allocated for threads
+
+// in 32-bit mode, the stack size in bytes in excess of PTHREAD_STACK_MIN allocated for threads
+#define NTHM_STACK_MIN 16384
 
 // error codes
 
