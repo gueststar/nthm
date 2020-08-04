@@ -79,7 +79,7 @@ speed the diagnosis of others.
   to anything else. This way, pointer fields are null, conditions are
   false, and numbers are zero by default, with no need for remembering
   to update the initialization function later when the definition of
-  the stucture is modified to have more fields.
+  the structure is modified to have more fields.
 * No recursion is allowed. (The C memory model permits only a
   constant amount of stack space and it's separate from the heap.)
 
