@@ -17,7 +17,7 @@ nthm_truncate \- tell a thread to finish up by approximating its output
 .P
 nthm_truncated \- poll the current thread's the truncation status
 .SH SYNOPSIS
-#include <nthm.h>
+#include <nthm/nthm.h>
 .sp 1
 void
 .BR nthm_truncate

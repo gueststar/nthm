@@ -15,7 +15,7 @@
 .SH NAME
 nthm_busy \- inquire as to whether a thread has finished running
 .SH SYNOPSIS
-#include <nthm.h>
+#include <nthm/nthm.h>
 .sp 1
 int
 .BR nthm_busy

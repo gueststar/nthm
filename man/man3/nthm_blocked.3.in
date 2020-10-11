@@ -15,7 +15,7 @@
 .SH NAME
 nthm_blocked \- test whether all open pipes are busy
 .SH SYNOPSIS
-#include <nthm.h>
+#include <nthm/nthm.h>
 .sp 1
 .BR int
 .BR nthm_blocked

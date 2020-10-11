@@ -15,7 +15,7 @@
 .SH NAME
 nthm_strerror \- translate an error code to a readable message
 .SH SYNOPSIS
-#include <nthm.h>
+#include <nthm/nthm.h>
 .sp 1
 char *
 .BR nthm_strerror

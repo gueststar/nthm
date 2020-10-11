@@ -15,7 +15,7 @@
 .SH NAME
 nthm_read \- read a result from a pipe and reclaim the pipe
 .SH SYNOPSIS
-#include <nthm.h>
+#include <nthm/nthm.h>
 .sp 1
 void *
 .BR nthm_read

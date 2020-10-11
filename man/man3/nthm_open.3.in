@@ -15,7 +15,7 @@
 .SH NAME
 nthm_open \- start a new thread and return a pipe from it
 .SH SYNOPSIS
-#include <nthm.h>
+#include <nthm/nthm.h>
 .sp 1
 .BR nthm_pipe
 .BR nthm_open
@@ -131,7 +131,7 @@ originate from
 .BR nthm.
 .TP
 *
-A standard set of positive numbers are for POSIX
+A standard set of positive numbers is for POSIX
 error codes.
 .P
 If 

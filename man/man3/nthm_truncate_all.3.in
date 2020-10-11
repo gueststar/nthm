@@ -15,7 +15,7 @@
 .SH NAME
 nthm_truncate_all \- request truncation of all locally tethered treads
 .SH SYNOPSIS
-#include <nthm.h>
+#include <nthm/nthm.h>
 .sp 1
 void
 .BR nthm_truncate_all

@@ -15,7 +15,7 @@
 .SH NAME
 nthm_kill_all \- request a shutdown of all locally tethered threads
 .SH SYNOPSIS
-#include <nthm.h>
+#include <nthm/nthm.h>
 .sp 1
 void
 .BR nthm_kill_all

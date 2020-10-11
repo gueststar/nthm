@@ -17,7 +17,7 @@ nthm_kill \- request shutdown of a given thread
 .sp 1
 nthm_killed \- poll the liveness status of the current thread
 .SH SYNOPSIS
-#include <nthm.h>
+#include <nthm/nthm.h>
 .sp 1
 void
 .BR nthm_kill

@@ -15,7 +15,7 @@
 .SH NAME
 nthm_select \- return a pipe from the next thread to finish
 .SH SYNOPSIS
-#include <nthm.h>
+#include <nthm/nthm.h>
 .sp 1
 .BR nthm_pipe
 .BR nthm_select
