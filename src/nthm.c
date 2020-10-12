@@ -1331,8 +1331,8 @@ untethered_yield (source, err)
 	  // setting their yielded flag and signaling their termination
 	  // condition. The pipe is assumed to be locked on entry and is
 	  // unlocked on exit. If the thread is already killed at this
-	  // point there's no need to do anything because the pipe about to
-	  // be retired by the killable function.
+	  // point there's no need to do anything because the pipe is about
+	  // to be retired by the killable function.
 {
   int dangling;
 
