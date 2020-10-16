@@ -27,11 +27,12 @@ The
 .BR nthm_select
 function
 retrieves a pipe
-whose return value is ready to be read
+whose return value is ready to be read.
+The pipe is selected
 from among those
-opened with
+previously opened with
 .BR nthm_open
-in the context the caller's thread or tethered to it with
+in the context the caller's thread, or previously tethered to it with
 .BR nthm_tether.
 .P
 Interleaved calls to
@@ -39,7 +40,8 @@ Interleaved calls to
 .BR nthm_select
 and
 .BR nthm_read
-are an efficient way to run a pool of worker threads because
+are an efficient way to run a pool of worker threads
+without unnecessary blocking because
 .BR nthm_select
 never blocks unless there is no choice because
 all threads are busy.
