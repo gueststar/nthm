@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 
 project(
-  nthm VERSION 0.3.5
+  nthm VERSION 0.3.6
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -151,9 +151,9 @@ find_library(JEMALLOC jemalloc)
 find_library(TCMALLOC tcmalloc_minimal)
 find_library(MIMALLOC mimalloc)
 
-# Mimalloc is the default choice because it's fastest, and tcmalloc is
-# the second choice because jemalloc segfaults non-deterministically
-# in resource-constrained environments.
+# Mimalloc is the default choice because it's fastest on the examples
+# tested, and tcmalloc is the second choice because jemalloc segfaults
+# non-deterministically in resource-constrained environments.
 
 if (MIMALLOC)
   message (STATUS "found mimalloc")
