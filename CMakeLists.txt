@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 
 project(
-  nthm VERSION 0.3.4
+  nthm VERSION 0.3.5
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -149,18 +149,23 @@ target_link_libraries(nthm pthread)
 
 find_library(JEMALLOC jemalloc)
 find_library(TCMALLOC tcmalloc_minimal)
+find_library(MIMALLOC mimalloc)
 
-# Tcmalloc is the default choice because jemalloc segfaults
-# non-deterministically in resource-constrained environments.
+# Mimalloc is the default choice because it's fastest, and tcmalloc is
+# the second choice because jemalloc segfaults non-deterministically
+# in resource-constrained environments.
 
-if (TCMALLOC)
+if (MIMALLOC)
+  message (STATUS "found mimalloc")
+  target_link_libraries(nthm mimalloc)
+elseif (TCMALLOC)
   message (STATUS "found tcmalloc")
   target_link_libraries(nthm tcmalloc_minimal)
 elseif (JEMALLOC)
   message (STATUS "found jemalloc")
   target_link_libraries(nthm jemalloc)
 else ()
-  message (STATUS "tcmalloc/jemalloc not found; expect reduced performance")
+  message (STATUS "mimalloc/tcmalloc/jemalloc not found; expect slowness")
 endif()
 
 #-------------- tests -----------------------
@@ -198,7 +203,7 @@ function(testme testname)
 	 add_test (NAME ${testname}_mem COMMAND ${MEMCHECK_COMMAND} ${CMAKE_CURRENT_BINARY_DIR}/${testname})
 	 set_tests_properties(${testname}_mem PROPERTIES PASS_REGULAR_EXPRESSION "no leaks")
 	 add_test (NAME ${testname}_drd COMMAND ${DRDCHECK_COMMAND} ${CMAKE_CURRENT_BINARY_DIR}/${testname})
-	 set_tests_properties(${testname}_drd PROPERTIES FAIL_REGULAR_EXPRESSION "Thread|Acquired")
+	 set_tests_properties(${testname}_drd PROPERTIES FAIL_REGULAR_EXPRESSION "Acquired")
   endif ()
 endfunction()
 

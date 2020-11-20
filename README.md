@@ -127,6 +127,7 @@ on the heap unless you like memory leaks.
 
 `Nthm` runs on GNU/Linux and maybe other Unix-like systems with git
 and CMake. Optional but highly recommended for better performance are
+[mimalloc](https://github.com/microsoft/mimalloc),
 [jemalloc](https://github.com/jemalloc/jemalloc) or
 [tcmalloc](https://github.com/google/tcmalloc). `Nthm` will be
 configured for optional memory and thread safety tests that may take
@@ -154,11 +155,11 @@ directory or manually remove the files listed in the build directory's
 
 `Nthm` passed its tests the last time I checked, but it hasn't been
 used in anything like a production setting. I've been able to observe
-sporadic segfaults during the exit routine phase when it's linked
-with `jemalloc` and memory is deliberately constrained with `ulimit
--v`, but the issue hasn't been reproducible with `tcmalloc` (the
-default configuration) or `libc malloc`, nor with unconstrained
-virtual memory.
+sporadic segfaults during the exit routine phase when it's linked with
+`jemalloc` and memory is deliberately constrained with `ulimit -v`,
+but the issue hasn't been reproducible with `tcmalloc` or `libc`
+`malloc`, nor with unconstrained virtual memory. It hasn't been tested
+with `mimalloc`.
 
 Nevertheless, I'm just one guy and `nthm` could do with an independent
 review in case there are any unknown bugs remaining. To relieve some
