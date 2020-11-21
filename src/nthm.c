@@ -1163,7 +1163,7 @@ static inline void
 unspecify (t)
 	  thread_spec t;
 
-	  // Free a thred specification structure.
+	  // Free a thread specification structure.
 {
   free (t);
 #ifdef MEMTEST
