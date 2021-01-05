@@ -63,9 +63,9 @@ main(argc, argv)
 	 cumulative_sum += (uintptr_t) nthm_read (source, &err);
   if (err ? 0 : (cumulative_sum == EXPECTED_CUMULATIVE_SUM))
 	 {
-		printf ("flatpool detected no errors with seed 0x%x\n", seed);
+		printf ("flatpool detected no errors with seed 0x%lx\n", seed);
 		exit(EXIT_SUCCESS);
 	 }
-  printf (err ? "flatpool failed with seed 0x%x\n%s\n" : "flatpool failed with seed 0x%x\n", seed, nthm_strerror(err));
+  printf (err ? "flatpool failed with seed 0x%lx\n%s\n" : "flatpool failed with seed 0x%lx\n", seed, nthm_strerror(err));
   exit(EXIT_FAILURE);
 }

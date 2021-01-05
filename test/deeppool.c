@@ -82,10 +82,10 @@ main(argc, argv)
 		x->count = LAST_TERM;
 		if (sum_of_interval (x, &err) == EXPECTED_CUMULATIVE_SUM)
 		  {
-			 printf ("deeppool detected no errors with seed 0x%x\n", seed);
+			 printf ("deeppool detected no errors with seed 0x%lx\n", seed);
 			 exit(EXIT_SUCCESS);
 		  }
 	 }
-  printf (err ? "deeppool failed with seed 0x%x\n%s\n" : "deeppool failed with seed 0x%x\n", seed, nthm_strerror(err));
+  printf (err ? "deeppool failed with seed 0x%lx\n%s\n" : "deeppool failed with seed 0x%lx\n", seed, nthm_strerror(err));
   exit (EXIT_FAILURE);
 }

@@ -101,11 +101,11 @@ main(argc, argv)
 		if (approximate_sum_of_interval (x, &err) + global_shortfall == EXPECTED_CUMULATIVE_SUM)
 		  {
 			 pthread_mutex_destroy (&global_lock);
-			 printf ("rubbish detected no errors with seed 0x%x\n", seed);
+			 printf ("rubbish detected no errors with seed 0x%lx\n", seed);
 			 exit (EXIT_SUCCESS);
 		  }
 		pthread_mutex_destroy (&global_lock);
 	 }
-  printf (err ? "rubbish failed with seed 0x%x\n%s\n" : "rubbish failed with seed 0x%x\n", seed, nthm_strerror(err));
+  printf (err ? "rubbish failed with seed 0x%lx\n%s\n" : "rubbish failed with seed 0x%lx\n", seed, nthm_strerror(err));
   exit (EXIT_FAILURE);
 }

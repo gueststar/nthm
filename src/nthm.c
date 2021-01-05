@@ -1,7 +1,7 @@
 /*
   nthm -- non-preemptive thread hierarchy manager
 
-  copyright (c) 2020 Dennis Furey
+  copyright (c) 2020, 2021 Dennis Furey
 
   Nthm is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -807,20 +807,20 @@ new_pipe (err)
   if ((source = (nthm_pipe) malloc (sizeof (*source))) ? 0 : (*err = (*err ? *err : ENOMEM)))
 	 return NULL;
   bzero (source, sizeof (*source));
-  if (e = pthread_cond_init (&(source->termination), NULL))
+  if ((e = pthread_cond_init (&(source->termination), NULL)))
 	 {
 		*err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(87));
 		free (source);
 		return NULL;
 	 }
-  if (e = pthread_cond_init (&(source->progress), NULL))
+  if ((e = pthread_cond_init (&(source->progress), NULL)))
 	 {
 		*err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(88));
 		pthread_cond_destroy (&(source->termination));
 		free (source);
 		return NULL;
 	 }
-  if (e = pthread_mutex_init (&(source->lock), NULL))
+  if ((e = pthread_mutex_init (&(source->lock), NULL)))
 	 {
 		*err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(89));
 		pthread_cond_destroy (&(source->termination));
@@ -1933,7 +1933,7 @@ nthm_truncate (source, err)
 		source->valid = PIPE_MUGGLE(81);
 		return;
 	 }
-  if (bumped = source->truncation + 1)  // don't increment if it was already the maximum value
+  if ((bumped = source->truncation + 1))  // don't increment if it was already the maximum value
 	 source->truncation = bumped;
   if (pthread_mutex_unlock (&(source->lock)) ? IER(203) : 0)
 	 source->valid = PIPE_MUGGLE(82);

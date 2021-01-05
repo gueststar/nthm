@@ -90,10 +90,10 @@ main(argc, argv)
 		total = approximate_sum_of_interval (x, &err);
 		if (! err)
 		  {
-			 printf ("killjoy detected no errors with seed 0x%x\n", seed);
+			 printf ("killjoy detected no errors with seed 0x%lx\n", seed);
 			 exit (EXIT_SUCCESS);
 		  }
 	 }
-  printf (err ? "killjoy failed with seed 0x%x\n%s\n" : "killjoy failed with seed 0x%x\n", seed, nthm_strerror(err));
+  printf (err ? "killjoy failed with seed 0x%lx\n%s\n" : "killjoy failed with seed 0x%lx\n", seed, nthm_strerror(err));
   exit (EXIT_FAILURE);
 }

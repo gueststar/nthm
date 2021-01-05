@@ -138,11 +138,11 @@ int main(argc, argv)
 		if (err ? 0 : (*cumulative_sum == EXPECTED_CUMULATIVE_SUM))
 		  {
 			 free (cumulative_sum);
-			 printf ("freepool detected no errors with seed 0x%x\n", seed);
+			 printf ("freepool detected no errors with seed 0x%lx\n", seed);
 			 exit(EXIT_SUCCESS);
 		  }
 		free (cumulative_sum);
 	 }
-  printf (err ? "freepool failed with seed 0x%x\n%s\n" : "freepool failed with seed 0x%x\n", seed, nthm_strerror(err));
+  printf (err ? "freepool failed with seed 0x%lx\n%s\n" : "freepool failed with seed 0x%lx\n", seed, nthm_strerror(err));
   exit(EXIT_FAILURE);
 }
