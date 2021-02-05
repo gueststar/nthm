@@ -1,0 +1,313 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM_ENTER_SCOPE 3 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm_enter_scope \- select only from subsequently opened pipes
+.sp 1
+nthm_exit_scope \- allow selection of previously opened pipes
+.SH SYNOPSIS
+#include <nthm/nthm.h>
+.sp 1
+void
+.BR nthm_enter_scope
+(
+int
+.I *err
+)
+.sp 1
+void
+.BR nthm_exit_scope
+(
+int
+.I *err
+)
+.SH DESCRIPTION
+These functions are an advanced feature of
+.BR nthm
+whose understanding depends on an understanding of
+.BR nthm_select
+and other functions. See the
+.BR NOTES
+section below for intended use cases.
+.P
+Normally
+.BR nthm_select
+can choose any pipe tethered to the caller's thread, but
+.BR nthm_enter_scope
+can restrict it to specific pipes.
+.TP
+*
+If
+there are open pipes when
+.BR nthm_enter_scope
+is called, and more pipes are opened afterwards, then
+.BR nthm_select
+chooses from among only those latter pipes and ignores the former.
+If the latter are busy, then
+.BR nthm_select
+blocks though the former may be ready.
+If the latter are absent, then
+.BR nthm_select
+returns NULL though the former may exist.
+.TP
+*
+When
+.BR nthm_exit_scope
+is called, pipes opened before the previous call to
+.BR nthm_enter_scope
+can be selected again by
+.BR nthm_select.
+.TP
+*
+Any remaining pipes opened between a call to
+.BR nthm_enter_scope
+and the next call to
+.BR nthm_exit_scope
+are untethered thereafter from the caller's thread
+and hence ignored by
+.BR nthm_select.
+However, their threads can continue to execute and
+be readable as normal.
+.P
+In more general usage, these functions can effect a stack-like
+configuration of scopes.
+.TP
+*
+Each call to
+.BR nthm_enter_scope
+pushes a new scope, hiding all pipes opened hitherto.
+.TP
+*
+Each call to
+.BR nthm_exit_scope
+pops a scope, restoring visibility to pipes opened just prior to the
+matching push but still hiding those opened before the previous
+unmatched push, if any.
+.P
+These functions also affect
+.BR nthm_blocked,
+.BR nthm_kill_all,
+and
+.BR nthm_truncate_all.
+They behave consistently with
+.BR nthm_select.
+.TP
+*
+.BR nthm_blocked
+returns a non-zero value if
+.BR nthm_select
+would block at the point where
+.BR nthm_blocked
+is called when scopes are taken into account.
+.TP
+*
+.BR nthm_kill_all
+and
+.BR nthm_truncate_all
+affect only the pipes that have been opened since the most recent call
+to
+.BR nthm_enter_scope
+not matched by a call to
+.BR nthm_exit_scope.
+.P
+The functions
+.BR nthm_kill,
+.BR nthm_truncate,
+.BR nthm_untether,
+and
+.BR nthm_read
+are also affected. Attempts to apply them to pipes that are
+tethered but not selectable by the above criteria cause the error
+status of
+.BR NTHM_NOTDRN,
+just as if the pipes had been tethered to a different thread.
+.SH RETURN VALUE
+none
+.SH ERRORS
+.P
+If
+.I *err
+is non-zero on entry, then
+.BR nthm_enter_scope
+and
+.BR nthm_exit_scope
+leave it unchanged. If
+.I *err
+is zero on entry and non-zero on exit, it may be assigned one of the
+following values for the reasons noted, and the requested operation
+will not have completed.
+.TP
+.BR NTHM_UNDFLO
+A scope underflow status is reported whenever
+.BR nthm_exit_scope
+is called more times than
+.BR nthm_enter_scope.
+.TP
+.BR NTHM_KILLED
+The
+.BR nthm_enter_scope
+function was interrupted because the caller's thread was killed.
+It may have been killed directly with
+.BR nthm_kill
+or
+.BR nthm_kill_all
+or as a consequence of a thread to which it is tethered
+being killed or terminating.
+.TP
+.BR ENOMEM
+Available memory is insufficient.
+.P
+Various undocumented error codes within the range of
+.BR -NTHM_MIN_ERR
+to
+.BR -NTHM_MAX_ERR
+might also be reported for developer diagnostics if internal
+consistency checks fail. These codes are not actionable by users
+but may be helpful in bug reports.
+.SH EXAMPLES
+This example illustrates pipes opened in two scopes with
+explanations of what to expect.
+.sp 1
+.nf
+   p1 = nthm_open (&f1, &x1, err);
+   p2 = nthm_open (&f2, &x2, err);
+
+      nthm_enter_scope (err);
+
+      q1 = nthm_open (&g1, &y1, err);
+      q2 = nthm_open (&g2, &y2, err);
+
+      // A is guaranteed to be read from either q1 or q2.
+
+      A = nthm_read (nthm_select (err), err);
+
+      nthm_exit_scope (err);
+
+   // The other of q1 or q2 is untethered at this
+   // point but may continue to run. B is guaranteed
+   // to be read from either p1 or p2.
+
+   B = nthm_read (nthm_select (err), err);
+.fi
+.sp 1
+Some points to note about this example are as follows.
+.TP
+*
+The first call to
+.BR nthm_select
+blocks if neither of q1 or q2 is ready, regardless of p1 and p2 being
+ready or not.
+.TP
+*
+If there were more than two calls to
+.BR nthm_select
+before
+.BR nthm_exit_scope,
+the third and subsequent calls would return a NULL pipe despite the
+presence of p1 and p2.
+.TP
+*
+After the call to
+.BR nthm_exit_scope,
+p1 and p2 are selectable as normal.
+Although one of q1 or q2 is still open,
+.BR nthm_select
+ignores it.
+.TP
+*
+A scope once exited can not be re-entered. If another scope were
+entered in a continuation of this example, the remaining unread
+pipe assigned to q1 or q2 still would not be selectable in it.
+.P
+The next example demonstrates multiple nested scopes.
+.sp 1
+.nf
+   a: nthm_enter_scope (err);       // outer scope
+
+   // Pipes opened here are selectable only here,
+   // between c: and d:, and between e: and f:.
+
+      b: nthm_enter_scope (err);    // nested scope
+
+      // Pipes opened here are selectable nowhere else.
+
+      c: nthm_exit_scope (err);     // matches b:
+
+   // Pipes opened here are also selectable between
+   // e: and f:.
+
+      d: nthm_enter_scope (err);    // another nested scope
+
+      // Pipes opened here are selectable nowhere else.
+
+      e: nthm_exit_scope (err);     // matches d:
+
+   // back in the outer scope
+
+   f: nthm_exit_scope (err);        // matches a:
+.fi
+.SH NOTES
+These functions can be helpful for library routines needing to operate
+on their own locally opened pipes while other pipes opened by the main
+application or other library routines continue in the background. A
+scope prevents the library routine from mistakenly selecting or
+interfering with pipes opened outside it.
+.P
+If a routine runs in a separate thread from the main application,
+and that thread is created directly
+by
+.BR pthreads
+primitives rather than as a side-effect of
+.BR nthm_open,
+then all pipes it opens with
+.BR nthm_open
+are automatically separate from those of the application without need
+of scopes.
+.P
+Nevertheless, it is good practice for directly created threads to
+enter a scope before opening any pipes and to exit it before
+exiting the thread. Exiting the initially entered scope in a
+thread when no pipes have been opened outside it causes
+.BR nthm
+to reclaim a small constant amount of storage that would otherwise
+persist until the whole system-level application process terminates,
+even if all pipes have yielded. Repeatedly opening unscoped pipes in
+short-lived separate threads could be considered a memory leak.
+.SH SEE ALSO
+.BR nthm (7),
+.BR nthm_open (3),
+.BR nthm_select (3)
+.br
+.BR nthm_truncate (3),
+.BR nthm_truncate_all (3),
+.BR nthm_truncated (3)
+.br
+.BR nthm_kill (3),
+.BR nthm_kill_all (3),
+.BR nthm_killed (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3),
+.BR nthm_blocked (3)
+.br
+.BR nthm_strerror (3),
+.BR nthm_busy (3),
+.BR pthreads (7)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE

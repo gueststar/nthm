@@ -40,10 +40,10 @@
 #define IER(n) (*err = (*err ? *err : THE_IER(n)))
 
 // arbitrary magic number for consistency checks; most positive numbers less than 2^31 would also work
-#define PIPE_MAGIC 1887434018
+#define MAGIC 1887434018
 
 // the n-th non-magic value; as with internal errors, distinguishable values are used only to log the point of detection
-#define PIPE_MUGGLE(n) n
+#define MUGGLE(n) n
 
 typedef struct pipe_list_struct *pipe_list;   // doubly linked list of pipes
 
@@ -57,9 +57,10 @@ struct pipe_list_struct
 
 struct nthm_pipe_struct
 {
-  int valid;                  // holds a muggle if any pthread operation or integrity check fails, PIPE_MAGIC otherwise
+  int valid;                  // holds a muggle if any pthread operation or integrity check fails, MAGIC otherwise
   int killed;                 // set either by user code or by the reader yielding without having read from the pipe
   int yielded;                // set by the thread when its result is finished being computed
+  pipe_list pool;             // root neighbors if the pipe is untethered
   pipe_list reader;           // a list of at most one pipe designated to read the result from this one
   pipe_list blockers;         // a list of pipes created by this one whose results are awaited
   pipe_list finishers;        // a list of pipes created by this one whose results are available in the order they finished
@@ -68,8 +69,11 @@ struct nthm_pipe_struct
   pthread_cond_t progress;    // signaled by the reader thread when this one is killed or by any blocker that terminates
   pthread_mutex_t lock;       // secures mutually exclusive access for otherwise non-atomic operations on this structure
   unsigned truncation;        // set by user code when a partial result is acceptable
+  nthm_pipe children;         // pipes corresponding to enclosed scopes
+  nthm_pipe parents;          // pipes corresponding to enclosing scopes
   void *result;               // returned by user code in the thread when it terminates
   int status;                 // an error code returned by user code if not overridden by other conditions
+  int top;                    // non-zero means it was the first pipe to be allocated in an unmanaged thread
 };
 
 typedef struct thread_spec_struct *thread_spec;  // passed to the manager function used to start threads
@@ -90,6 +94,9 @@ static pthread_once_t once_control = PTHREAD_ONCE_INIT;
 // used for storing error codes detected outside the context of the thread causing them
 static int global_error = 0;
 
+// a bit bucket for error codes the user chooses to ignore
+static int ignored = 0;
+
 // for exclusive access to the global error code
 static pthread_mutex_t error_lock;
 
@@ -99,8 +106,14 @@ static pthread_attr_t thread_attribute;
 // created mutexes have these attributes
 static pthread_mutexattr_t mutex_attribute;
 
-// to be freed on exit
+// list of untethered and top pipes to be freed on exit
 static pipe_list root_pipes = NULL;
+
+// enforces mutually exclusive access to the root pipe list
+static pthread_mutex_t root_lock;
+
+// puts another pipe into the root pipe list
+static int pooled (nthm_pipe drain, int *err);
 
 // function that reclaims static storage and synchronizes threads on exit
 static void teardown (void);
@@ -121,7 +134,10 @@ static pthread_cond_t junction;
 static pthread_cond_t last_thread;
 
 // enforces mutually exclusive access to running_threads, ready_to_join, and joinable_thread
-static pthread_mutex_t thread_reclamation_lock;
+static pthread_mutex_t junction_lock;
+
+// set to non-zero if the usual shutdown protocol has to be abandoned due to a pthread error
+static int deadlocked = 0;
 
 #ifdef MEMTEST                  // keep counts of allocated structures; not suitable for production code
 // number of pipes in memory
@@ -134,7 +150,11 @@ static uintptr_t pipe_lists = 0;
 static uintptr_t thread_specs = 0;
 #endif // MEMTEST
 
+
+
+
 // --------------- initialization routines -----------------------------------------------------------------
+
 
 
 
@@ -147,10 +167,10 @@ stack_limited_thread_type (a, err)
 	  // Initialize the attributes for all created threads. On 32-bit
 	  // systems, use small stacks.
 {
-  if ((!a) ? IER(21) : pthread_attr_init (a) ? IER(22) : 0)
+  if ((!a) ? IER(22) : pthread_attr_init (a) ? IER(23) : 0)
 	 return 0;
 #ifdef USE_SMALL_STACKS
-  if (pthread_attr_setstacksize (a, PTHREAD_STACK_MIN + NTHM_STACK_MIN) ? IER(23) : 0)
+  if (pthread_attr_setstacksize (a, PTHREAD_STACK_MIN + NTHM_STACK_MIN) ? IER(24) : 0)
 	 {
 		pthread_attr_destroy (a);
 		return 0;
@@ -158,8 +178,6 @@ stack_limited_thread_type (a, err)
 #endif
   return 1;
 }
-
-
 
 
 
@@ -175,9 +193,9 @@ error_checking_mutex_type (a, err)
 	  // Initialize the attributes for all created mutexes to use error
 	  // checking.
 {
-  if ((!a) ? IER(24) : pthread_mutexattr_init (a) ? IER(25) : 0)
+  if ((!a) ? IER(25) : pthread_mutexattr_init (a) ? IER(26) : 0)
 	 return 0;
-  if (!(pthread_mutexattr_settype (a, PTHREAD_MUTEX_ERRORCHECK) ? IER(26) : 0))
+  if (!(pthread_mutexattr_settype (a, PTHREAD_MUTEX_ERRORCHECK) ? IER(27) : 0))
 	 return 1;
   pthread_mutexattr_destroy (a);
   return 0;
@@ -192,79 +210,38 @@ error_checking_mutex_type (a, err)
 static void
 initialization_routine ()
 
-    // Initialize all static storage or bust.
+    // Initialize all static storage or none.
 {
   int err;
 
   err = 0;
   if (! error_checking_mutex_type (&mutex_attribute, &err))
-	 {
-		fprintf (stderr, "%s\n", nthm_strerror (err));
-		exit (EXIT_FAILURE);
-	 }
-  if (pthread_mutex_init (&error_lock, &mutex_attribute))
-	 {
-		pthread_mutexattr_destroy (&mutex_attribute);
-		fprintf (stderr, "%s\n", nthm_strerror (THE_IER(27)));
-		exit (EXIT_FAILURE);
-	 }
-  if (pthread_mutex_init (&thread_reclamation_lock, &mutex_attribute))
-	 {
-		pthread_mutexattr_destroy (&mutex_attribute);
-		pthread_mutex_destroy (&error_lock);
-		fprintf (stderr, "%s\n", nthm_strerror (THE_IER(28)));
-		exit (EXIT_FAILURE);
-	 }
-  if (pthread_cond_init (&junction, NULL))
-	 {
-		pthread_mutexattr_destroy (&mutex_attribute);
-		pthread_mutex_destroy (&error_lock);
-		pthread_mutex_destroy (&thread_reclamation_lock);
-		fprintf (stderr, "%s\n", nthm_strerror (THE_IER(29)));
-		exit (EXIT_FAILURE);
-	 }
-  if (pthread_cond_init (&last_thread, NULL))
-	 {
-		pthread_mutexattr_destroy (&mutex_attribute);
-		pthread_mutex_destroy (&error_lock);
-		pthread_mutex_destroy (&thread_reclamation_lock);
-		pthread_cond_destroy (&junction);
-		fprintf (stderr, "%s\n", nthm_strerror (THE_IER(30)));
-		exit (EXIT_FAILURE);
-	 }
+	 goto a;
+  if (pthread_mutex_init (&junction_lock, &mutex_attribute) ? (err = THE_IER(28)) : 0)
+	 goto b;
+  if (pthread_mutex_init (&error_lock, &mutex_attribute) ? (err = THE_IER(29)) : 0)
+	 goto c;
+  if (pthread_mutex_init (&root_lock, &mutex_attribute) ? (err = THE_IER(30)) : 0)
+	 goto d;
+  if (pthread_cond_init (&last_thread, NULL) ? (err = THE_IER(31)) : 0)
+	 goto e;
+  if (pthread_cond_init (&junction, NULL) ? (err = THE_IER(32)) : 0)
+	 goto f;
   if (! stack_limited_thread_type (&thread_attribute, &err))
-	 {
-		pthread_mutexattr_destroy (&mutex_attribute);
-		pthread_mutex_destroy (&error_lock);
-		pthread_mutex_destroy (&thread_reclamation_lock);
-		pthread_cond_destroy (&junction);
-		pthread_cond_destroy (&last_thread);
-		fprintf (stderr, "%s\n", nthm_strerror (THE_IER(31)));
-		exit (EXIT_FAILURE);
-	 }
-  if (pthread_key_create (&cursor, NULL))
-	 {
-		pthread_mutexattr_destroy (&mutex_attribute);
-		pthread_mutex_destroy (&error_lock);
-		pthread_mutex_destroy (&thread_reclamation_lock);
-		pthread_cond_destroy (&junction);
-		pthread_cond_destroy (&last_thread);
-		pthread_attr_destroy (&thread_attribute);
-		fprintf (stderr, "%s\n", nthm_strerror (THE_IER(32)));
-		exit (EXIT_FAILURE);
-	 }
-  if (atexit (teardown))
-	 {
-		pthread_mutexattr_destroy (&mutex_attribute);
-		pthread_mutex_destroy (&error_lock);
-		pthread_mutex_destroy (&thread_reclamation_lock);
-		pthread_cond_destroy (&junction);
-		pthread_cond_destroy (&last_thread);
-		pthread_attr_destroy (&thread_attribute);
-		pthread_key_delete (cursor);
-		fprintf (stderr, "%s\n", nthm_strerror (THE_IER(33)));
-		exit (EXIT_FAILURE);
-	 }
+	 goto g;
+  if (pthread_key_create (&cursor, NULL) ? (err = THE_IER(33)) : 0)
+	 goto h;
+  if (atexit (teardown) ? (! (err = THE_IER(34))) : 1)
+	 return;
+ h: pthread_attr_destroy (&thread_attribute);
+ g: pthread_cond_destroy (&junction);
+ f: pthread_cond_destroy (&last_thread);
+ e: pthread_mutex_destroy (&root_lock);
+ d: pthread_mutex_destroy (&error_lock);
+ c: pthread_mutex_destroy (&junction_lock);
+ b: pthread_mutexattr_destroy (&mutex_attribute);
+ a: fprintf (stderr, "%s\n", nthm_strerror (err));
+  exit (EXIT_FAILURE);
 }
 
 
@@ -275,8 +252,8 @@ initialization_routine ()
 static inline void
 initialize_cursor ()
 
-    // The key used by all threads has to be initialized just once for the
-    // whole process.
+    // Static variables including the cursor have to be initialized
+    // just once for the whole process.
 {
   pthread_once (&once_control, initialization_routine);
 }
@@ -292,11 +269,9 @@ globally_throw (err)
 
 	  // Safely assign the global error code.
 {
-  if (! err)
+  if (err ? pthread_mutex_lock (&error_lock) : 1)
 	 return;
-  pthread_mutex_lock (&error_lock);
-  if (! global_error)
-	 global_error = err;
+  global_error = (global_error ? global_error : err);
   pthread_mutex_unlock (&error_lock);
 }
 
@@ -326,7 +301,6 @@ current_context ()
 
 
 
-
 static int
 set_context (drain, err)
 	  nthm_pipe drain;
@@ -339,10 +313,9 @@ set_context (drain, err)
   initialize_cursor ();
   if (!(e = pthread_setspecific (cursor, (void *) drain)))
 	 return 1;
-  *err = (*err ? *err : (e == ENOMEM) ? e : (e = EAGAIN) ? e : THE_IER(34));
+  *err = (*err ? *err : (e == ENOMEM) ? e : (e = EAGAIN) ? e : THE_IER(35));
   return 0;
 }
-
 
 
 
@@ -364,8 +337,8 @@ clear_context (err)
 
 
 
-
 // --------------- pipe list demolition --------------------------------------------------------------------
+
 
 
 
@@ -378,7 +351,7 @@ severed (t, err)
 
 	  // Remove an item from a pipe list without freeing it.
 {
-  if ((!t) ? IER(35) : (!(t->previous_pipe)) ? IER(36) : 0)
+  if ((! t) ? IER(36) : t->previous_pipe ? 0 : IER(37))
 	 return 0;
   if ((*(t->previous_pipe) = t->next_pipe))
 	 t->next_pipe->previous_pipe = t->previous_pipe;
@@ -402,11 +375,11 @@ freed (r, err)
 	  // Free a unit pipe list and remove the reference to it from its
 	  // complement, if any.
 {
-  if ((!r) ? IER(37) : r->next_pipe ? IER(38) : r->previous_pipe ? IER(39) : 0)
+  if ((!r) ? IER(38) : r->next_pipe ? IER(39) : r->previous_pipe ? IER(40) : 0)
 	 return 0;
   if (r->complement)
 	 {
-		if ((r->complement->complement == r) ? 0 : IER(40))
+		if ((r->complement->complement == r) ? 0 : IER(41))
 		  return 0;
 		r->complement->complement = NULL;
 	 }
@@ -451,7 +424,7 @@ popped (f, err)
 {
   nthm_pipe p;
 
-  if ((!f) ? IER(41) : ! unilaterally_delisted (f->complement, err))
+  if ((!f) ? IER(42) : ! unilaterally_delisted (f->complement, err))
 	 return NULL;
   p = f->pipe;
   return (unilaterally_delisted (f, err) ? p : NULL);
@@ -475,7 +448,7 @@ dequeued (f, q, err)
 {
   nthm_pipe p;
 
-  if (((!f) != !*q) ? IER(42) : ! f)
+  if (((!f) != !*q) ? IER(43) : ! f)
 	 return NULL;
   if (f != *q)
 	 return popped (f, err);
@@ -503,13 +476,13 @@ bilaterally_delisted (r, f, q, err)
   nthm_pipe p;
   pipe_list c;
 
-  if ((!r) ? IER(43) : (c = r->complement) ? 0 : IER(44))
+  if ((!r) ? IER(44) : (c = r->complement) ? 0 : IER(45))
 	 return NULL;
   if (c == f)
 	 return dequeued (f, q, err);
   if (c != *q)
 	 return popped (c, err);
-  if (f ? 0 : IER(45))
+  if (f ? 0 : IER(46))
 	 return NULL;
   p = popped (*q, err);
   for (*q = f; (*q)->next_pipe; *q = (*q)->next_pipe);
@@ -530,9 +503,9 @@ bilaterally_freed (r, b, err)
 
 	  // Free a pair of complementary unit pipe lists.
 {
-  if ((!r) ? IER(46) : (!b) ? IER(47) : (r->complement != b) ? IER(48) : (b->complement != r) ? IER(49) : 0)
+  if ((!r) ? IER(47) : (!b) ? IER(48) : (r->complement != b) ? IER(49) : (b->complement != r) ? IER(50) : 0)
 	 return 0;
-  return (freed (r, err) ? freed (b, err) : 0);
+  return ((freed (r, err) ? 1 : IER(51)) ? freed (b, err) : 0);
 }
 
 
@@ -541,8 +514,9 @@ bilaterally_freed (r, b, err)
 
 
 
-
 // --------------- pipe list construction ------------------------------------------------------------------
+
+
 
 
 
@@ -558,9 +532,7 @@ pipe_list_of (p, err)
 {
   pipe_list t;
 
-  if (p ? 0 : IER(50))
-	 return NULL;
-  if ((t = (pipe_list) malloc (sizeof (*t))) ? 0 : (*err = (*err ? *err : ENOMEM)))
+  if ((p ? 0 : IER(52)) ? 1 : (t = (pipe_list) malloc (sizeof (*t))) ? 0 : (*err = (*err ? *err : ENOMEM)))
 	 return NULL;
 #ifdef MEMTEST
   pthread_mutex_lock (&error_lock);
@@ -588,7 +560,7 @@ new_complementary_pipe_lists (r, d, b, s, err)
 	  // Allocate and initialize complementary unit pipe lists r of d
 	  // and b of s if there is sufficient memory.
 {
-  if ((!b) ? IER(51) : (!r) ? IER(52) : !(*r = pipe_list_of (d, err)))
+  if ((!b) ? IER(53) : (!r) ? IER(54) : !(*r = pipe_list_of (d, err)))
 	 return 0;
   if ((*b = pipe_list_of (s, err)))
 	 {
@@ -596,7 +568,7 @@ new_complementary_pipe_lists (r, d, b, s, err)
 		(*r)->complement = *b;
 		return 1;
 	 }
-  if (freed (*r, err))
+  if (freed (*r, err) ? 1 : IER(55))
 	 *r = NULL;
   return 0;
 }
@@ -616,14 +588,13 @@ pushed (t, b, err)
 
 	  // Concatenate a unit list t with a list b.
 {
-  if ((!t) ? IER(53) : (!b) ? IER(54) : t->previous_pipe ? IER(55) : t->next_pipe ? IER(56) : 0)
+  if ((!t) ? IER(56) : (!b) ? IER(57) : t->previous_pipe ? IER(58) : t->next_pipe ? IER(59) : 0)
 	 return 0;
-  t->previous_pipe = b;
-  if ((t->next_pipe = *b))
+  if ((t->next_pipe = *(t->previous_pipe = b)))
 	 (*b)->previous_pipe = &(t->next_pipe);
-  *b = t;
-  return 1;
+  return ! ! (*b = t);
 }
+
 
 
 
@@ -642,11 +613,11 @@ enqueued (t, f, q, err)
 	  // Append the unit list t to the queue that starts with f and
 	  // ends with q.
 {
-  if ((!f) ? IER(57) : (!q) ? IER(58) : ((!*f) != !*q) ? IER(59) : (!*q) ? 0 : (*q)->next_pipe ? IER(60) : 0)
+  pipe_list *p;
+
+  if ((!f) ? IER(60) : (!q) ? IER(61) : ((!*f) != !*q) ? IER(62) : (!*q) ? 0 : (*q)->next_pipe ? IER(63) : 0)
 	 return 0;
-  if (*q)
-	 return  ((! pushed (t, &((*q)->next_pipe), err)) ? 0 : (*q = (*q)->next_pipe) ? 1 : ! IER(61));
-  return ((! pushed (t, f, err)) ? 0 : (*q = *f) ? 1 : ! IER(62));
+  return ((! pushed (t, p = (*q ? &((*q)->next_pipe) : f), err)) ? 0 : (*q = *p) ? 1 : ! IER(64));
 }
 
 
@@ -654,6 +625,8 @@ enqueued (t, f, q, err)
 
 
 // --------------- tree climbing ---------------------------------------------------------------------------
+
+
 
 
 
@@ -672,52 +645,25 @@ heritably_killed_or_yielded (source, err)
 {
   nthm_pipe drain;
 
-  if ((!source) ? IER(63) : (source->valid != PIPE_MAGIC) ? IER(64) : 0)
+  if ((!source) ? IER(65) : (source->valid != MAGIC) ? IER(66) : 0)
 	 return 0;
-  if (pthread_mutex_lock (&(source->lock)) ? IER(65) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(1);
-		return 0;
-	 }
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(67) : 0) ? (source->valid = MUGGLE(1)) : 0)
+	 return 0;
   if (source->killed ? 1 : source->yielded)
+	 return ((pthread_mutex_unlock (&(source->lock)) ? IER(68) : 0) ? (source->valid = MUGGLE(2)) : 1);
+  for (; source->reader; source = drain)
 	 {
-		if (pthread_mutex_unlock (&(source->lock)) ? IER(66) : 0)
-		  source->valid = PIPE_MUGGLE(2);
-		return 1;
-	 }
-  while (source->reader)
-	 {
-		if ((!(drain = source->reader->pipe)) ? IER(67) : (drain->valid != PIPE_MAGIC) ? IER(68) : 0)
-		  {
-			 pthread_mutex_unlock (&(source->lock));
-			 source->valid = PIPE_MUGGLE(3);
-			 return 0;
-		  }
-		if (pthread_mutex_lock (&(drain->lock)) ? IER(69) : 0)
-		  {
-			 if (pthread_mutex_unlock (&(source->lock)) ? IER(70) : 0)
-				source->valid = PIPE_MUGGLE(4);
-			 drain->valid = PIPE_MUGGLE(5);
-			 return 0;
-		  }
+		if ((!(drain = source->reader->pipe)) ? IER(69) : (drain->valid != MAGIC) ? IER(70) : 0)
+		  break;
+		if ((pthread_mutex_lock (&(drain->lock)) ? IER(71) : 0) ? (drain->valid = MUGGLE(3)) : 0)
+		  break;
 		if (drain->yielded ? 1 : drain->killed)
-		  {
-			 if (pthread_mutex_unlock (&(source->lock)) ? IER(71) : 0)
-				source->valid = PIPE_MUGGLE(6);
-			 if (pthread_mutex_unlock (&(drain->lock)) ? IER(72) : 0)
-				drain->valid = PIPE_MUGGLE(7);
-			 return 1;
-		  }
-		if (pthread_mutex_unlock (&(source->lock)) ? IER(73) : 0)
-		  {
-			 source->valid = PIPE_MUGGLE(8);
-			 return 0;
-		  }
-		source = drain;
+		  if ((pthread_mutex_unlock (&(source->lock)) ? IER(72) : 0) ? (source->valid = MUGGLE(4)) : 1)
+			 return ((pthread_mutex_unlock (&(drain->lock)) ? IER(73) : 0) ? (drain->valid = MUGGLE(5)) : 1);
+		if ((pthread_mutex_unlock (&(source->lock)) ? IER(74) : 0) ? (source->valid = MUGGLE(6)) : 0)
+		  return 0;
 	 }
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(74) : 0)
-	 source->valid = PIPE_MUGGLE(9);
-  return 0;
+  return ((pthread_mutex_unlock (&(source->lock)) ? IER(75) : 0) ? (! (source->valid = MUGGLE(7))) : 0);
 }
 
 
@@ -736,52 +682,24 @@ heritably_truncated (source, err)
 {
   nthm_pipe drain;
 
-  if ((!source) ? IER(75) : (source->valid != PIPE_MAGIC) ? IER(76) : 0)
+  if ((!source) ? IER(76) : (source->valid != MAGIC) ? IER(77) : 0)
 	 return 0;
-  if (pthread_mutex_lock (&(source->lock)) ? IER(77) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(10);
-		return 0;
-	 }
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(78) : 0) ? (source->valid = MUGGLE(8)) : 0)
+	 return 0;
   if (source->truncation)
+	 return ((pthread_mutex_unlock (&(source->lock)) ? IER(79) : 0) ? (source->valid = MUGGLE(9)) : 1);
+  for (; source->reader; source = drain)
 	 {
-		if (pthread_mutex_unlock (&(source->lock)) ? IER(78) : 0)
-		  source->valid = PIPE_MUGGLE(11);
-		return 1;
+		if ((!(drain = source->reader->pipe)) ? IER(80) : (drain->valid != MAGIC) ? IER(81) : 0)
+		  break;
+		if ((pthread_mutex_lock (&(drain->lock)) ? IER(82) : 0) ? (drain->valid = MUGGLE(10)) : 0)
+		  break;
+		if (drain->truncation ? ((pthread_mutex_unlock (&(source->lock)) ? IER(83) : 0) ? (source->valid = MUGGLE(11)) : 1) : 0)
+		  return ((pthread_mutex_unlock (&(drain->lock)) ? IER(84) : 0) ? (drain->valid = MUGGLE(12)) : 1);
+		if ((pthread_mutex_unlock (&(source->lock)) ? IER(85) : 0) ? (source->valid = MUGGLE(13)) : 0)
+		  return 0;
 	 }
-  while (source->reader)
-	 {
-		if ((!(drain = source->reader->pipe)) ? IER(79) : (drain->valid != PIPE_MAGIC) ? IER(80) : 0)
-		  {
-			 pthread_mutex_unlock (&(source->lock));
-			 source->valid = PIPE_MUGGLE(12);
-			 return 0;
-		  }
-		if (pthread_mutex_lock (&(drain->lock)) ? IER(81) : 0)
-		  {
-			 if (pthread_mutex_unlock (&(source->lock)) ? IER(82) : 0)
-				source->valid = PIPE_MUGGLE(13);
-			 drain->valid = PIPE_MUGGLE(14);
-			 return 0;
-		  }
-		if (drain->truncation)
-		  {
-			 if (pthread_mutex_unlock (&(source->lock)) ? IER(83) : 0)
-				source->valid = PIPE_MUGGLE(15);
-			 if (pthread_mutex_unlock (&(drain->lock)) ? IER(84) : 0)
-				drain->valid = PIPE_MUGGLE(16);
-			 return 1;
-		  }
-		if (pthread_mutex_unlock (&(source->lock)) ? IER(85) : 0)
-		  {
-			 source->valid = PIPE_MUGGLE(17);
-			 return 0;
-		  }
-		source = drain;
-	 }
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(86) : 0)
-	 source->valid = PIPE_MUGGLE(18);
-  return 0;
+  return ((pthread_mutex_unlock (&(source->lock)) ? IER(86) : 0) ? (! (source->valid = MUGGLE(14))) : 0);
 }
 
 
@@ -790,6 +708,7 @@ heritably_truncated (source, err)
 
 
 // --------------- pipe construction -----------------------------------------------------------------------
+
 
 
 
@@ -808,104 +727,62 @@ new_pipe (err)
 	 return NULL;
   bzero (source, sizeof (*source));
   if ((e = pthread_cond_init (&(source->termination), NULL)))
-	 {
-		*err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(87));
-		free (source);
-		return NULL;
-	 }
+	 goto a;
   if ((e = pthread_cond_init (&(source->progress), NULL)))
-	 {
-		*err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(88));
-		pthread_cond_destroy (&(source->termination));
-		free (source);
-		return NULL;
-	 }
+	 goto b;
   if ((e = pthread_mutex_init (&(source->lock), NULL)))
-	 {
-		*err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(89));
-		pthread_cond_destroy (&(source->termination));
-		pthread_cond_destroy (&(source->progress));
-		free (source);
-		return NULL;
-	 }
+	 goto c;
 #ifdef MEMTEST
   pthread_mutex_lock (&error_lock);
   pipes++;
   pthread_mutex_unlock (&error_lock);
 #endif
-  source->valid = PIPE_MAGIC;
+  source->valid = MAGIC;
   return source;
+ c: pthread_cond_destroy (&(source->progress));
+ b: pthread_cond_destroy (&(source->termination));
+ a: free (source);
+  *err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(87));
+  return NULL;
 }
 
 
 
 
 
-
-
 static int
-tethered (source, drain, err)
-	  nthm_pipe source;
-	  nthm_pipe drain;
+tethered (s, d, err)
+	  nthm_pipe s;
+	  nthm_pipe d;
 	  int *err;
 
-	  // Tether a source to a drain if it isn't already. If the source
-	  // has terminated, then it has to be enqueued in the drain's
-	  // finishers, but if it's still running, then it has to be pushed
-	  // into the blockers. Locks on both are needed, and the source
-	  // is locked first.
+	  // Tether a source s to a drain d if it isn't already. If the
+	  // source has terminated, then it has to be enqueued in the
+	  // drain's finishers, but if it's still running, then it has to
+	  // be pushed into the blockers. Locks on both are needed, and the
+	  // source is locked first.
 {
   int done;
-  pipe_list new_reader, new_writer;
+  pipe_list r, w;   // the source's reader and the drain's finisher or blocker
 
-  if (drain ? 0 : IER(90))
+  if ((! d) ? IER(88) : (d->valid != MAGIC) ? IER(89) : (! s) ? IER(90) : (s->valid != MAGIC) ? IER(91) : 0)
 	 return 0;
-  if ((drain->valid != PIPE_MAGIC) ? IER(91) : (!source) ? IER(92) : (source->valid != PIPE_MAGIC) ? IER(93) : 0)
+  if ((pthread_mutex_lock (&(s->lock)) ? IER(92) : 0) ? (s->valid = MUGGLE(15)) : 0)
 	 return 0;
-  if (source->reader ? (source->reader->pipe == drain) : 0)
-	 return 1;
-  if (source->reader ? (source->reader->pipe != drain) : 0)
-	 return ! (*err = (*err ? *err : NTHM_NOTDRN));
-  if (! new_complementary_pipe_lists (&new_reader, drain, &new_writer, source, err))
-	 return 0;
-  if (pthread_mutex_lock (&(source->lock)) ? IER(94) : 0)
-	 {
-		source->valid = (bilaterally_freed (new_reader, new_writer, err) ? PIPE_MUGGLE(19) : PIPE_MUGGLE(20));
-		return 0;
-	 }
-  if (source->killed ? IER(95) : 0)
-	 {
-		if (pthread_mutex_unlock (&(source->lock)))
-		  source->valid = PIPE_MUGGLE(21);
-		return (bilaterally_freed (new_reader, new_writer, err) ? 0 : 0);
-	 }
-  if (pthread_mutex_lock (&(drain->lock)) ? IER(96) : 0)
-	 {
-		if (pthread_mutex_unlock (&(source->lock)))
-		  source->valid = PIPE_MUGGLE(22);
-		drain->valid = (bilaterally_freed (new_reader, new_writer, err) ? PIPE_MUGGLE(23) : PIPE_MUGGLE(24));
-		return 0;
-	 }
-  if (! pushed (new_reader, &(source->reader), err))
-	 {
-		if (pthread_mutex_unlock (&(source->lock)) ? IER(97) : 0)
-		  source->valid = PIPE_MUGGLE(25);
-		if (pthread_mutex_unlock (&(drain->lock)) ? IER(98) : 0)
-		  drain->valid = PIPE_MUGGLE(26);
-		return (bilaterally_freed (new_reader, new_writer, err) ? 0 : 0);
-	 }
-  if (source->yielded)
-	 done = enqueued (new_writer, &(drain->finishers), &(drain->finisher_queue), err);
-  else
-	 done = pushed (new_writer, &(drain->blockers), err);
-  if (done ? 0 : unilaterally_delisted (source->reader, err))
-	 source->valid = (freed (new_writer, err) ? PIPE_MUGGLE(27) : PIPE_MUGGLE(28));
-  else if (! done)
-	 source->valid = (freed (new_writer, err) ? PIPE_MUGGLE(29) : PIPE_MUGGLE(30));
-  if (pthread_mutex_unlock (&(drain->lock)) ? IER(99) : 0)
-	 drain->valid = PIPE_MUGGLE(31);
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(100) : 0)
-	 source->valid = PIPE_MUGGLE(32);
+  if ((!(s->reader)) ? (done = 0) : (s->reader->pipe == d) ? (done = 1) : ! (done = ! (*err = (*err ? *err : NTHM_NOTDRN))))
+	 goto a;
+  if (s->killed ? IER(93) : (pthread_mutex_lock (&(d->lock)) ? IER(94) : 0) ? (d->valid = MUGGLE(16)) : 0)
+	 goto a;
+  if (new_complementary_pipe_lists (&r, d, &w, s, err))
+	 if (pushed (r, &(s->reader), err) ? 1 : bilaterally_freed (r, w, err) ? 0 : ! IER(95))
+		if (!(done = (s->yielded ? enqueued (w, &(d->finishers), &(d->finisher_queue), err) : pushed (w, &(d->blockers), err))))
+		  if (freed (w, err) ? 1 : IER(96))
+			 if (! unilaterally_delisted (s->reader, err))
+				s->valid = MUGGLE(17);
+  if (pthread_mutex_unlock (&(d->lock)) ? IER(97) : 0)
+	 d->valid = MUGGLE(18);
+ a: if (pthread_mutex_unlock (&(s->lock)) ? IER(98) : 0)
+	 s->valid = MUGGLE(19);
   return done;
 }
 
@@ -920,6 +797,8 @@ tethered (source, drain, err)
 
 
 
+
+
 static int
 retired (source, err)
 	  nthm_pipe source;
@@ -928,19 +807,19 @@ retired (source, err)
 	  // Tear down a pipe that has no drain and no blockers or
 	  // finishers left.
 {
-  if ((!source) ? IER(101) : (source->valid != PIPE_MAGIC) ? IER(102) : 0)
+  if ((!source) ? IER(99) : (source->valid != MAGIC) ? IER(100) : 0)
 	 return 0;
-  if (source->reader ? IER(103) : source->blockers ? IER(104) : 0) 
+  if (source->reader ? IER(101) : source->blockers ? IER(102) : 0) 
 	 return 0;
-  if (source->finishers ? IER(105) : source->finisher_queue ? IER(106) : 0)
+  if (source->finishers ? IER(103) : source->finisher_queue ? IER(104) : 0)
 	 return 0;
-  source->valid = PIPE_MUGGLE(33);
-  if (pthread_cond_destroy (&(source->termination)) ? IER(107) : 0)
+  if ((pthread_cond_destroy (&(source->termination)) ? IER(105) : 0) ? (source->valid = MUGGLE(20)) : 0)
 	 return 0;
-  if (pthread_cond_destroy (&(source->progress)) ? IER(108) : 0)
+  if ((pthread_cond_destroy (&(source->progress)) ? IER(106) : 0) ? (source->valid = MUGGLE(21)) : 0)
 	 return 0;
-  if (pthread_mutex_destroy (&(source->lock)) ? IER(109) : 0)
+  if ((pthread_mutex_destroy (&(source->lock)) ? IER(107) : 0) ? (source->valid = MUGGLE(22)) : 0)
 	 return 0;
+  source->valid = MUGGLE(23);
   free (source);
 #ifdef MEMTEST
   pthread_mutex_lock (&error_lock);
@@ -965,39 +844,30 @@ untethered (source, err)
 	  // on both are needed. The source is locked first.
 {
   nthm_pipe drain;
-  int dangling;
+  int done;
 
-  if ((!source) ? IER(110) : (source->valid == PIPE_MAGIC) ? 0 : IER(111))
+  if ((!source) ? IER(108) : (source->valid == MAGIC) ? 0 : IER(109))
 	 return 0;
   if (!(source->reader))
 	 return 1;
+  if ((source->reader->pipe ? 0 : IER(110)) ? (source->valid = MUGGLE(24)) : 0)
+	 return 0;
   if (((drain = current_context ()) != source->reader->pipe) ? (*err = (*err ? *err : NTHM_NOTDRN)) : 0)
 	 return 0;
-  if ((!drain) ? IER(112) : (drain->valid != PIPE_MAGIC) ? IER(113) : 0)
+  if ((drain->valid != MAGIC) ? IER(111) : 0)
 	 return 0;
-  if (pthread_mutex_lock (&(source->lock)) ? IER(114) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(34);
-		return 0;
-	 }
-  if (pthread_mutex_lock (&(drain->lock)) ? IER(115) : 0)
-	 {
-		if (pthread_mutex_unlock (&(source->lock)) ? IER(116) : 0)
-		  source->valid = PIPE_MUGGLE(35);
-		drain->valid = PIPE_MUGGLE(36);
-		return 0;
-	 }
-  if ((source == bilaterally_delisted (source->reader, drain->finishers, &(drain->finisher_queue), err)) ? 0 : IER(117))
-	 source->valid = drain->valid = PIPE_MUGGLE(37);
-  dangling = (source->killed ? source->yielded : 0);
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(118) : 0)
-	 source->valid = PIPE_MUGGLE(38);
-  if (pthread_mutex_unlock (&(drain->lock)) ? IER(119) : 0)
-	 drain->valid = PIPE_MUGGLE(39);
-  if (dangling ? ! retired (source, err) : 0)
-	 source->valid = PIPE_MUGGLE(40);
-  return 1;
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(112) : 0) ? (source->valid = MUGGLE(25)) : (done = 0))
+	 return 0;
+  if ((pthread_mutex_lock (&(drain->lock)) ? IER(113) : 0) ? (drain->valid = MUGGLE(26)) : 0)
+	 goto a;
+  done = (source == bilaterally_delisted (source->reader, drain->finishers, &(drain->finisher_queue), err));
+  if (pthread_mutex_unlock (&(drain->lock)) ? IER(114) : 0)
+	 drain->valid = MUGGLE(27);
+ a: if (pthread_mutex_unlock (&(source->lock)) ? IER(115) : 0)
+	 source->valid = MUGGLE(28);
+  return (done ? pooled (source, err) : 0);
 }
+
 
 
 
@@ -1010,22 +880,16 @@ killable (source, err)
 	  nthm_pipe source;
 	  int *err;
 
-	  // Untether and kill a pipe, which entails either retiring it if
-	  // it has already yielded or signaling its progress otherwise.
+	  // Untether and kill a pipe, which entails retiring it if
+	  // it has already yielded.
 {
-  if ((!source) ? IER(120) : (source->valid != PIPE_MAGIC) ? IER(121) : 0)
+  if ((!source) ? IER(116) : (source->valid != MAGIC) ? IER(117) : 0)
 	 return 0;
-  if (pthread_mutex_lock (&(source->lock)) ? IER(122) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(41);
-		return 0;
-	 }
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(118) : 0) ? (source->valid = MUGGLE(29)) : 0)
+	 return 0;
   source->killed = 1;
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(123) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(42);
-		return 0;
-	 }
+  if ((pthread_mutex_unlock (&(source->lock)) ? IER(119) : 0) ? (source->valid = MUGGLE(30)) : 0)
+	 return 0;
   return untethered (source, err);
 }
 
@@ -1036,8 +900,8 @@ killable (source, err)
 
 
 static int
-blockers_killed (drain, err)
-	  nthm_pipe drain;
+blockers_killed (d, err)
+	  nthm_pipe d;
 	  int *err;
 
 	  // This function run in the drain's context kills all blockers to
@@ -1047,36 +911,22 @@ blockers_killed (drain, err)
 	  // untethering the blocker.
 {
   nthm_pipe blocker;
+  int done;
 
-  if ((!drain) ? IER(124) : (drain->valid != PIPE_MAGIC) ? IER(125) : 0)
+  if ((! d) ? IER(120) : (d->valid != MAGIC) ? IER(121) : 0)
 	 return 0;
-  if (pthread_mutex_lock (&(drain->lock)) ? IER(126) : 0)
+  if ((pthread_mutex_lock (&(d->lock)) ? IER(122) : 0) ? (d->valid = MUGGLE(31)) : 0)
+	 return 0;
+  while (! (done = ! (d->blockers)))
 	 {
-		drain->valid = PIPE_MUGGLE(43);
-		return 0;
+		if ((blocker = d->blockers->pipe) ? 0 : (d->valid = MUGGLE(32)))
+		  break;
+		if ((pthread_mutex_unlock (&(d->lock)) ? IER(123) : 0) ? (d->valid = MUGGLE(33)) : ! killable (blocker, err))
+		  return 0;
+		if ((pthread_mutex_lock (&(d->lock)) ? IER(124) : 0) ? (d->valid = MUGGLE(34)) : 0)
+		  return 0;
 	 }
-  while (drain->blockers)
-	 if (!(blocker = drain->blockers->pipe))
-		{
-		  drain->valid = PIPE_MUGGLE(44);
-		  return 0;
-		}
-	 else if (pthread_mutex_unlock (&(drain->lock)) ? IER(127) : ! killable (blocker, err))
-		{
-		  drain->valid = PIPE_MUGGLE(45);
-		  return 0;
-		}
-	 else if (pthread_mutex_lock (&(drain->lock)) ? IER(128) : 0)
-		{
-		  drain->valid = PIPE_MUGGLE(46);
-		  return 0;
-		}
-  if (pthread_mutex_unlock (&(drain->lock)) ? IER(129) : 0)
-	 {
-		drain->valid = PIPE_MUGGLE(47);
-		return 0;
-	 }
-  return 1;
+  return (((pthread_mutex_unlock (&(d->lock)) ? IER(125) : 0) ? (d->valid = MUGGLE(35)) : 0) ? 0 : done);
 }
 
 
@@ -1086,33 +936,35 @@ blockers_killed (drain, err)
 
 
 static void
-flush (drain, err)
-	  nthm_pipe drain;
+flush (d, err)
+	  nthm_pipe *d;
 	  int *err;
 
 	  // Kill both the blockers and the finishers to a drain. The pipes
 	  // in the finishers queue are assumed to be flushed already. A
 	  // lock is needed here in case one of the blockers finishes
-	  // concurrently.
+	  // concurrently. If the drain has parents, then the user code has
+	  // yielded from within a local scope (i.e., neglecting to exit
+	  // the local scope), so kill the parents' blockers and finishers
+	  // and put the pipe back into its global scope.
 {
-  nthm_pipe finisher;
+  nthm_pipe finisher, scope;
 
-  if ((!drain) ? 1 : (drain->valid != PIPE_MAGIC) ? IER(130) : ! blockers_killed (drain, err))
+  if (d ? 0 : IER(126))
 	 return;
-  if (pthread_mutex_lock (&(drain->lock)) ? IER(131) : 0)
+  while ((scope = *d))
 	 {
-		drain->valid = PIPE_MUGGLE(48);
-		return;
-	 }
-  while ((finisher = dequeued (drain->finishers, &(drain->finisher_queue), err)))
-	 {
-		if (! retired (finisher, err))
-		  finisher->valid = PIPE_MUGGLE(49);
-	 }
-  if (pthread_mutex_unlock (&(drain->lock)) ? IER(132) : 0)
-	 {
-		drain->valid = PIPE_MUGGLE(50);
-		return;
+		if ((scope->valid != MAGIC) ? IER(127) : ! blockers_killed (scope, err))
+		  return;
+		if ((pthread_mutex_lock (&(scope->lock)) ? IER(128) : 0) ? (scope->valid = MUGGLE(36)) : 0)
+		  return;
+		while ((finisher = dequeued (scope->finishers, &(scope->finisher_queue), err)))
+		  if (finisher->pool ? IER(129) : retired (finisher, err) ? 0 : IER(130))
+			 finisher->valid = MUGGLE(37);
+		if ((pthread_mutex_unlock (&(scope->lock)) ? IER(131) : 0) ? (scope->valid = MUGGLE(38)) : ! (scope->parents))
+		  return;
+		if (set_context (*d = scope->parents, err) ? ((scope->pool ? IER(132) : retired (scope, err) ? 0 : IER(133))) : 1)
+		  return;
 	 }
 }
 
@@ -1121,10 +973,9 @@ flush (drain, err)
 
 
 
-
-
-
 // --------------- drain-side protocol support -------------------------------------------------------------
+
+
 
 
 
@@ -1140,8 +991,9 @@ thread_spec_of (source, operator, operand, err)
 {
   thread_spec t;
 
-  if ((t = (thread_spec) malloc (sizeof (*t))) ? 0 : (*err = (*err ? *err : ENOMEM)))
-	 return NULL;
+  if (source ? ((t = (thread_spec) malloc (sizeof (*t))) ? 0 : (*err = (*err ? *err : ENOMEM))) : 1)
+	 if (source ? (retired (source, err) ? 1 : IER(134)) : 1)
+		return NULL;
   bzero (t, sizeof (*t));
 #ifdef MEMTEST
   pthread_mutex_lock (&error_lock);
@@ -1159,12 +1011,18 @@ thread_spec_of (source, operator, operand, err)
 
 
 
-static inline void
-unspecify (t)
+
+static void
+unspecify (t, err)
 	  thread_spec t;
+	  int *err;
 
 	  // Free a thread specification structure.
 {
+  if (t ? 0 : IER(135))
+	 return;
+  if (t->pipe ? (! retired (t->pipe, err)) : 0)
+	 IER(136);
   free (t);
 #ifdef MEMTEST
   pthread_mutex_lock (&error_lock);
@@ -1178,6 +1036,7 @@ unspecify (t)
 
 
 
+
 static nthm_pipe
 current_or_new_context (err)
 	  int *err;
@@ -1185,23 +1044,16 @@ current_or_new_context (err)
 	  // Return an existing pipe associated with the current thread
 	  // context or create one and push it into the root pipes.
 {
-  pipe_list t;
   nthm_pipe drain;
   int e;
 
-  if ((drain = current_context ()))
+  if ((drain = current_context ()) ? 1 : ! (drain = new_pipe (err)))
 	 return drain;
-  if (!(drain = new_pipe (err)))
-	 return NULL;
-  if (!(t = pipe_list_of (drain, err)))
-	 return (retired (drain, err) ? NULL : NULL);
-  if (! pushed (t, &root_pipes, err))
-	 return ((freed (t, err) ? retired (drain, err) : retired (drain, err)) ? NULL : NULL);
-  if (set_context (drain, err))
-	 return drain;
-  return ((unilaterally_delisted (root_pipes, err) ? retired (drain, err) : retired (drain, err)) ? NULL : NULL);
+  drain->top = 1;
+  if ((pooled (drain, err) ? set_context (drain, err) : 0) ? 0 : retired (drain, err) ? 1 : IER(137))
+	 drain = NULL;
+  return drain;
 }
-
 
 
 
@@ -1219,39 +1071,24 @@ untethered_read (source, err)
 	  // killed. Wait on the pipe's termination signal if necessary.
 {
   void *result;
-  int status;
+  int done;
 
-  if ((!source) ? IER(133) : (source->valid != PIPE_MAGIC) ? IER(134) : 0)
+  result = NULL;
+  if ((!source) ? IER(138) : (source->valid != MAGIC) ? IER(139) : (done = 0))
 	 return NULL;
-  if (pthread_mutex_lock (&(source->lock)) ? IER(135) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(51);
-		return NULL;
-	 }
-  if ((source->reader) ? (*err = (*err ? *err : NTHM_NOTDRN)) : 0)
-	 {
-		if (pthread_mutex_unlock (&(source->lock)) ? IER(136) : 0)
-		  source->valid = PIPE_MUGGLE(52);
-		return NULL;
-	 }
-  if (source->yielded ? 0 : pthread_cond_wait (&(source->termination), &(source->lock)) ? IER(137) : 0)
-	 {
-		pthread_mutex_unlock (&(source->lock));
-		source->valid = PIPE_MUGGLE(53);
-		return NULL;
-	 }
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(138) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(54);
-		return NULL;
-	 }
-  if (source->yielded ? 0 : IER(139))
-	 return (killable (source, err) ? NULL : NULL);
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(140) : 0) ? (source->valid = MUGGLE(39)) : 0)
+	 return NULL;
+  if (source->reader ? (*err = (*err ? *err : NTHM_NOTDRN)) : 0)
+	 goto a;
+  if (source->yielded ? 0 : pthread_cond_wait (&(source->termination), &(source->lock)) ? IER(141) : 0)
+	 goto a;
+  if (source->yielded ? (! (done = 1)) : IER(142))
+	 goto a;
   result = source->result;
-  status = source->status;
-  if (retired (source, err))
-	 *err = (*err ? *err : status);
-  return result;
+  *err = (*err ? *err : source->status);
+ a: if (pthread_mutex_unlock (&(source->lock)) ? IER(143) : 0)
+	 source->valid = MUGGLE(40);
+  return ((done ? killable (source, err) : 0) ? result : NULL);
 }
 
 
@@ -1276,39 +1113,25 @@ tethered_read (source, err)
   nthm_pipe drain;
   void *result;
   int status;
+  int done;
 
-  if ((!source) ? IER(140) : (source->valid != PIPE_MAGIC) ? IER(141) : source->reader ? 0 : IER(142))
+  if ((!source) ? IER(144) : (source->valid != MAGIC) ? IER(145) : source->reader ? 0 : IER(146))
 	 return NULL;
   if (((drain = current_context ()) == source->reader->pipe) ? 0 : (*err = (*err ? *err : NTHM_NOTDRN)))
 	 return NULL;
-  if ((!drain) ? IER(143) : (drain->valid != PIPE_MAGIC) ? IER(144) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(55);
-		return NULL;
-	 }
-  if (pthread_mutex_lock (&(drain->lock)) ? IER(145) : 0)
-	 {
-		drain->valid = PIPE_MUGGLE(56);
-		return NULL;
-	 }
-  while ((source->yielded ? 1 : drain->killed) ? 0 : pthread_cond_wait (&(drain->progress), &(drain->lock)) ? IER(146) : 0)
-	 {
-		pthread_mutex_unlock (&(drain->lock));
-		drain->valid = PIPE_MUGGLE(57);
-		return NULL;
-	 }
-  if (pthread_mutex_unlock (&(drain->lock)) ? IER(147) : 0)
-	 {
-		drain->valid = PIPE_MUGGLE(58);
-		return NULL;
-	 }
-  status = (source->yielded ? source->status : NTHM_KILLED);
+  if (((!drain) ? IER(147) : (drain->valid != MAGIC) ? IER(148) : 0) ? (source->valid = MUGGLE(41)) : 0)
+	 return NULL;
+  if ((pthread_mutex_lock (&(drain->lock)) ? IER(149) : 0) ? (drain->valid = MUGGLE(42)) : 0)
+	 return NULL;
+  while (! (done = (source->yielded ? 1 : drain->killed)))
+	 if (pthread_cond_wait (&(drain->progress), &(drain->lock)) ? IER(150) : 0)
+		goto a;
+  *err = (*err ? *err : source->yielded ? source->status : NTHM_KILLED);
   result = (source->yielded ? source->result : NULL);
-  if (killable (source, err))
-	 *err = (*err ? *err : status);
-  return result;
+ a: if (pthread_mutex_unlock (&(drain->lock)) ? IER(151) : 0)
+	 drain->valid = MUGGLE(43);
+  return ((done ? killable (source, err) : 0) ? result : NULL);
 }
-
 
 
 
@@ -1323,30 +1146,25 @@ tethered_read (source, err)
 
 
 static void
-untethered_yield (source, err)
-	  nthm_pipe source;
+untethered_yield (s, err)
+	  nthm_pipe s;
 	  int *err;
 
 	  // Pipes that have no drain indicate termination by atomically
 	  // setting their yielded flag and signaling their termination
-	  // condition. The pipe is assumed to be locked on entry and is
-	  // unlocked on exit. If the thread is already killed at this
-	  // point there's no need to do anything because the pipe is about
-	  // to be retired by the killable function.
+	  // condition. The pipe is assumed to be locked on entry to this
+	  // function and is unlocked on exit. If the thread is already
+	  // killed at this point the pipe will be retired when pooled.
 {
-  int dangling;
-
-  if ((!source) ? IER(148) : (source->valid != PIPE_MAGIC) ? IER(149) : 0)
+  if ((! s) ? IER(152) : (s->valid != MAGIC) ? IER(153) : 0)
 	 return;
-  source->yielded = 1;
-  if ((dangling = source->killed) ? 0 : pthread_cond_signal (&(source->termination)) ? IER(150) : 0)
-	 source->valid = PIPE_MUGGLE(59);
-  source->status = (*err ? *err : source->status);
-  *err = 0;
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(151) : 0)
-	 source->valid = PIPE_MUGGLE(60);
-  if (dangling ? (! retired (source, err)) : 0)
-	 source->valid = PIPE_MUGGLE(61);
+  s->yielded = 1;
+  if (s->killed ? 0 : pthread_cond_signal (&(s->termination)) ? IER(154) : 0)
+	 s->valid = MUGGLE(44);
+  else if (s->status ? 0 : (s->status = *err))
+	 *err = 0;
+  if (pthread_mutex_unlock (&(s->lock)) ? IER(155) : 0)
+	 s->valid = MUGGLE(45);
 }
 
 
@@ -1356,53 +1174,36 @@ untethered_yield (source, err)
 
 
 static void
-tethered_yield (source, err)
-	  nthm_pipe source;
+tethered_yield (s, err)
+	  nthm_pipe s;
 	  int *err;
 
-	  // Pipes that have a drain indicate termination by atomically
+	  // Pipes that have a drain d indicate termination by atomically
 	  // setting their yielded flag, moving themselves from the drain's
 	  // blocker list to its finishers queue, and signaling the drain's
-	  // progress condition. The source is assumed to be locked on
-	  // entry and is unlocked prior to unlocking the drain.
+	  // progress condition. The source s is assumed to be locked on
+	  // entry.
 {
-  pipe_list blocker;
-  nthm_pipe drain;
+  pipe_list b;  // the entry in the drain's blocker list corresponding to the source
+  nthm_pipe d;
 
-  if ((!source) ? IER(152) : (source->valid != PIPE_MAGIC) ? IER(153) : (!(source->reader)) ? IER(154) : 0)
+  if ((! s) ? IER(156) : (s->valid != MAGIC) ? IER(157) : 0)
 	 return;
-  if ((!(drain = source->reader->pipe)) ? IER(155) : (drain->valid != PIPE_MAGIC) ? IER(156) : 0)
-	 {
-		source->valid = (pthread_mutex_unlock (&(source->lock)) ? PIPE_MUGGLE(62) : PIPE_MUGGLE(63));
-		return;
-	 }
-  if (pthread_mutex_lock (&(drain->lock)) ? IER(157) : 0)
-	 {
-		if (pthread_mutex_unlock (&(source->lock)))
-		  source->valid = PIPE_MUGGLE(64);
-		drain->valid = PIPE_MUGGLE(65);
-		return;
-	 }
-  if (!(source->killed))
-	 {
-		source->yielded = 1;
-		blocker = source->reader->complement;
-		if (! severed (blocker, err))
-		  drain->valid = PIPE_MUGGLE(66);
-		else
-		  {
-			 if (! enqueued (blocker, &(drain->finishers), &(drain->finisher_queue), err))
-				drain->valid = (freed (blocker, err) ? PIPE_MUGGLE(67) : PIPE_MUGGLE(68));
-			 else if (pthread_cond_signal (&(drain->progress)) ? IER(158) : 0)
-				drain->valid = PIPE_MUGGLE(69);
-		  }
-	 }
-  source->status = (*err ? *err : source->status);
-  *err = 0;
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(159) : 0)
-	 source->valid = PIPE_MUGGLE(70);
-  if (pthread_mutex_unlock (&(drain->lock)) ? IER(160) : 0)
-	 drain->valid = PIPE_MUGGLE(71);
+  if (s->killed ? IER(158) : s->reader ? 0 : IER(159))
+	 goto a;
+  if ((!(d = s->reader->pipe)) ? IER(160) : (d->valid != MAGIC) ? IER(161) : 0)
+	 goto a;
+  if ((pthread_mutex_lock (&(d->lock)) ? IER(162) : 0) ? (d->valid = MUGGLE(46)) : 0)
+	 goto a;
+  if (! severed (b = s->reader->complement, err))
+	 goto b;
+  if ((s->yielded = (enqueued (b, &(d->finishers), &(d->finisher_queue), err) ? 1 : freed (b, err) ? 0 : ! IER(163))))
+	 if (pthread_cond_signal (&(d->progress)) ? IER(164) : 0)
+		d->valid = MUGGLE(47);
+ b: if (pthread_mutex_unlock (&(d->lock)) ? IER(165) : 0)
+	 d->valid = MUGGLE(48);
+ a: if (pthread_mutex_unlock (&(s->lock)) ? IER(166) : 0)
+	 s->valid = MUGGLE(49);
 }
 
 
@@ -1419,17 +1220,14 @@ yield (source, err)
 
 	  // Lock the source to stop it changing between tethered and
 	  // untethered, and then yield according to the corresponding
-	  // protocol. The pipe has to be flushed before being allowed into
-	  // the reader's finishers queue.
+	  // protocol. The source has to be flushed before being allowed
+	  // into its reader's finishers queue.
 {
-  flush (source, err);
-  if ((!source) ? IER(161) : (source->valid != PIPE_MAGIC) ? IER(162) : 0)
+  flush (&source, err);
+  if ((!source) ? IER(167) : (source->valid != MAGIC) ? IER(168) : 0)
 	 return;
-  if (pthread_mutex_lock (&(source->lock)) ? IER(163) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(72);
-		return;
-	 }
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(169) : 0) ? (source->valid = MUGGLE(50)) : 0)
+	 return;
   if (source->reader)
 	 tethered_yield (source, err);
   else
@@ -1441,59 +1239,45 @@ yield (source, err)
 
 
 
+
+
 static void
-prepare_for_exit (err)
+relay_race (err)
 	  int *err;
 
 	  // Join with previous threads until they're all finished or
-	  // there's a lull, then schedule the current thread to be joined
+	  // there's a lull. Then schedule the current thread to be joined
 	  // with the next one to finish, and wait for its signal before
 	  // exiting. If the current thread is the last one running, then
 	  // signal the exit routine to join with it instead. This waiting
 	  // doesn't block the user code in the current thread because it
-	  // has already returned its result.
+	  // yielded before this function was called.
 {
-  pthread_t joining_thread;
-  void *retval;
+  pthread_t joiner;
+  void *leak;
 
-  if (pthread_mutex_lock (&thread_reclamation_lock) ? IER(164) : 0)
+  if (deadlocked ? 1 : pthread_mutex_lock (&junction_lock) ? IER(170) : 0)
 	 return;
-  while (ready_to_join)
+  while (ready_to_join ? ready_to_join-- : 0)
 	 {
-		ready_to_join = 0;
-		joining_thread = joinable_thread;
-		if (pthread_cond_signal (&junction) ? IER(165) : 0)
-		  {
-			 pthread_mutex_unlock (&thread_reclamation_lock);
-			 return;
-		  }
-		if (pthread_mutex_unlock (&thread_reclamation_lock) ? IER(166) : 0)
+		joiner = joinable_thread;
+		if (pthread_cond_signal (&junction) ? IER(171) : 0)
+		  goto a;
+		if (pthread_mutex_unlock (&junction_lock) ? IER(172) : 0)
 		  return;
-		if (pthread_join (joining_thread, &retval) ? IER(167) : 0)
-		  {
-			 pthread_mutex_unlock (&thread_reclamation_lock);
-			 return;
-		  }
-		if (pthread_mutex_lock (&thread_reclamation_lock) ? IER(168) : 0)
+		if (pthread_join (joiner, &leak) ? IER(173) : 0)
+		  goto a;
+		if (leak ? IER(174) : pthread_mutex_lock (&junction_lock) ? IER(175) : 0)
 		  return;
 	 }
-  ready_to_join = 1;
+  ready_to_join++;
   joinable_thread = pthread_self ();
-  if (! --running_threads)
-	 if (pthread_cond_signal (&last_thread) ? IER(169) : 0)     // wake up the exit routine
-		{
-		  pthread_mutex_unlock (&thread_reclamation_lock);
-		  return;
-		}
-  if (pthread_cond_wait (&junction, &thread_reclamation_lock) ? IER(170) : 0)
-	 {
-		pthread_mutex_unlock (&thread_reclamation_lock);
-		return;
-	 }
-  if (pthread_mutex_unlock (&thread_reclamation_lock))
-	 IER(171);
+  if (--running_threads ? 1 : pthread_cond_signal (&last_thread) ? (! IER(176)) : 1)
+	 if (pthread_cond_wait (&junction, &junction_lock))
+		IER(177);
+ a: if (pthread_mutex_unlock (&junction_lock))
+	 IER(178);
 }
-
 
 
 
@@ -1509,36 +1293,113 @@ manager (void_pointer)
 	  // the given function in the created thread and yields when
 	  // finished.
 {
-  nthm_pipe source;
-  thread_spec spec;
+  thread_spec t;
+  nthm_pipe s;
   int err;
 
   err = 0;
-  if (!(spec = (thread_spec) void_pointer) ? 1 : (!(source = spec->pipe)) ? 1 : (source->valid != PIPE_MAGIC))
-	 {
-		globally_throw (THE_IER(172));
-		pthread_exit (NULL);
-	 }
-  if (pthread_mutex_lock (&thread_reclamation_lock))
-	 {
-		globally_throw (THE_IER(173));
-		pthread_exit (NULL);
-	 }
-  running_threads++;
-  if (pthread_mutex_unlock (&thread_reclamation_lock))
-	 {
-		running_threads--;                  // maybe a race but already hosed at this point
-		globally_throw (THE_IER(174));
-		pthread_exit (NULL);
-	 }
-  source->result = (set_context (source, &err) ? (spec->operator) (spec->operand, &err) : NULL);
-  unspecify (spec);
-  yield (source, &err);
-  clear_context (&err);
-  prepare_for_exit (&err);
-  globally_throw (err);
+  if ((t = (thread_spec) void_pointer) ? 0 : (deadlocked = err = THE_IER(179)))
+	 goto a;
+  if (((!(s = t->pipe)) ? 1 : (s->valid != MAGIC) ? 1 : ! set_context (s, &err)) ? (deadlocked = err = THE_IER(180)) : 0)
+	 goto b;
+  if (pthread_mutex_lock (&junction_lock) ? (deadlocked = err = THE_IER(181)) : ! ++running_threads)
+	 goto c;
+  if (pthread_mutex_unlock (&junction_lock) ? (deadlocked = err = THE_IER(182)) : 0)
+	 goto c;
+  t->pipe = NULL;
+  s->result = (t->operator) (t->operand, &(s->status));
+  yield (s, &err);
+ c: clear_context (&err);
+ b: unspecify (t, &err);
+  relay_race (&err);
+ a: globally_throw (err);
   pthread_exit (NULL);
 }
+
+
+
+
+
+
+// --------------- root pipe list management ---------------------------------------------------------------
+
+
+
+
+
+
+
+static int
+quiescent (p, err)
+	  nthm_pipe p;
+	  int *err;
+
+	  // Safely test whether a pipe is ready to be retired.
+{
+  int q;
+
+  if ((! p) ? IER(183) : (p->valid != MAGIC) ? IER(184) : 0)
+	 return 0;
+  if ((pthread_mutex_lock (&(p->lock)) ? IER(185) : 0) ? (p->valid = MUGGLE(51)) : 0)
+	 return 0;
+  q = (p->blockers ? 0 : p->killed ? p->yielded : 0);
+  return (((pthread_mutex_unlock (&(p->lock)) ? IER(186) : 0) ? (p->valid = MUGGLE(52)) : 0) ? 0 : q);
+}
+
+
+
+
+
+
+
+static int
+pooled (drain, err)
+	  nthm_pipe drain;
+	  int *err;
+
+	  // Append a pipe to the root pool if it's not quiescent and also
+	  // take the opportunity to remove quiescent pipes from the
+	  // pool. Return non-zero if the pipe is consumed. The pipe might
+	  // be already in the pool or might be already quiescent or both
+	  // or neither.
+{
+  pipe_list *b;
+  nthm_pipe p;
+
+  if (pthread_mutex_lock (&root_lock) ? IER(187) : 0)
+	 return 0;
+  for (b = &root_pipes; *b; drain = ((p == drain) ? NULL : drain))
+	 if (! quiescent (p = (*b)->pipe, err))
+		b = &((*b)->next_pipe);
+	 else if ((retired (p, err) ? unilaterally_delisted (*b, err) : 0) ? 0 : pthread_mutex_unlock (&root_lock) ? IER(188) : 1)
+		return 0;
+  if (drain ? (drain->pool ? (! IER(189)) : 1) : 0)
+	 if (quiescent (drain, err) ? (retired (drain, err) ? (! ! (drain = NULL)) : ! IER(190)) : 1)
+		if ((drain->pool = pipe_list_of (drain, err)) ? (*(drain->pool->previous_pipe = b) = drain->pool) : NULL)
+		  drain = NULL;
+  return ((pthread_mutex_unlock (&root_lock) ? IER(191) : 0) ? 0 : ! drain);
+}
+
+
+
+
+
+
+
+static int
+unpooled (p, err)
+	  nthm_pipe p;
+	  int *err;
+
+	  // Take a top pipe out of the root pool if it has no blockers or finishers.
+{
+  if ((! p) ? IER(192) : pthread_mutex_lock (&root_lock) ? IER(193) : 0)
+	 return 0;
+  if (p->pool ? (p->top ? (p->blockers ? 0 : ! p->finishers) : 0) : 0)
+	 p = ((unilaterally_delisted (p->pool, err) ? retired (p, err) : 0) ? NULL : p);
+  return (((pthread_mutex_unlock (&root_lock)) ? IER(194) : 0) ? 0 : ! p);
+}
+
 
 
 
@@ -1557,11 +1418,32 @@ globally_catch (err)
 
 	  // Safely detect the global error code.
 {
-  if (*err ? 1 : pthread_mutex_lock (&error_lock) ? IER(175) : 0)
+  if (*err ? 1 : pthread_mutex_lock (&error_lock) ? IER(195) : 0)
 	 return;
   *err = global_error;
-  pthread_mutex_unlock (&error_lock);
+  if (pthread_mutex_unlock (&error_lock))
+	 IER(196);
 }
+
+
+
+
+
+
+static int
+reaped (q, err)
+	  pipe_list *q;
+	  int *err;
+
+	  // Transfer the whole list of root pipes to q.
+{
+  if ((! q) ? IER(197) : pthread_mutex_lock (&root_lock) ? IER(198) : 0)
+	 return 0;
+  if (((*q) = root_pipes) ? ((*q)->previous_pipe = q) : NULL)
+	 root_pipes = NULL;
+  return (pthread_mutex_unlock (&root_lock) ? (! IER(199)) : 1);
+}
+
 
 
 
@@ -1572,15 +1454,21 @@ static void
 eradicate (err)
 	  int *err;
 
-	  // Free the root pipes.
+	  // Sequentially free the root pipes.
 {
-  while (root_pipes)
+  pipe_list q;
+
+  for (q = NULL; q ? 1 : reaped (&q, err) ? (! ! q) : 0;)
 	 {
-		flush (root_pipes->pipe, err);
-		if (! retired (root_pipes->pipe, err))
-		  IER(176);
-		if (! unilaterally_delisted (root_pipes, err))
-		  IER(177);
+		if (q->pipe ? 0 : IER(200))
+		  return;
+		while (q->pipe->children)
+		  q->pipe = q->pipe->children;
+		if (set_context (q->pipe, err) ? 0 : IER(201))
+		  return;
+		flush (&(q->pipe), err);
+		if ((! retired (q->pipe, err)) ? IER(202) : (! unilaterally_delisted (q, err)) ? IER(203) : 0)
+		  return;
 	 }
 }
 
@@ -1596,26 +1484,20 @@ synchronize (err)
 
 	  // Join with the last thread still running.
 {
-  void *retval;
+  void *leak;
 
-  if (pthread_mutex_lock (&thread_reclamation_lock) ? IER(178) : 0)
+  if (deadlocked ? 1 : pthread_mutex_lock (&junction_lock) ? IER(204) : 0)
 	 return;
-  if ((! running_threads) ? 0 : pthread_cond_wait (&last_thread, &thread_reclamation_lock) ? IER(179) : 0)
-	 {
-		pthread_mutex_unlock (&thread_reclamation_lock);
-		return;
-	 }
-  if (pthread_cond_signal (&junction) ? IER(180) : 0)
-	 {
-		pthread_mutex_unlock (&thread_reclamation_lock);
-		return;
-	 }
-  if (pthread_mutex_unlock (&thread_reclamation_lock) ? IER(181) : 0)
+  if ((! running_threads) ? 0 : pthread_cond_wait (&last_thread, &junction_lock) ? IER(205) : 0)
+	 goto a;
+  if (pthread_cond_signal (&junction) ? IER(206) : 0)
+	 goto a;
+  if (pthread_mutex_unlock (&junction_lock) ? IER(207) : 0)
 	 return;
-  if (! ready_to_join)                 // can happen only if no threads were ever created
+  if (pthread_join (joinable_thread, &leak) ? IER(208) : leak ? IER(209) : 1)
 	 return;
-  if (pthread_join (joinable_thread, &retval))
-	 IER(182);
+ a: if (pthread_mutex_unlock (&junction_lock))
+	 IER(210);
 }
 
 
@@ -1630,19 +1512,19 @@ release_pthread_resources (err)
 	  // Release pthread related resources.
 {
   if (pthread_mutexattr_destroy (&mutex_attribute))
-	 IER(183);
-  if (pthread_mutex_destroy (&error_lock))
-	 IER(184);
-  if (pthread_mutex_destroy (&thread_reclamation_lock))
-	 IER(185);
+	 IER(211);
+  if (pthread_mutex_destroy (&root_lock))
+	 IER(212);
+  if (pthread_mutex_destroy (&junction_lock))
+	 IER(213);
   if (pthread_cond_destroy (&junction))
-	 IER(186);
+	 IER(214);
   if (pthread_cond_destroy (&last_thread))
-	 IER(187);
+	 IER(215);
   if (pthread_attr_destroy (&thread_attribute))
-	 IER(188);
+	 IER(216);
   if (pthread_key_delete (cursor))
-	 IER(189);
+	 IER(217);
 }
 
 
@@ -1662,17 +1544,19 @@ teardown ()
   err = 0;
   eradicate (&err);
   synchronize (&err);
-  globally_catch (&err);
   release_pthread_resources (&err);
+  globally_catch (&err);
+  if (pthread_mutex_destroy (&error_lock))
+	 err = (err ? err : THE_IER(218));
   if (err)
 	 fprintf (stderr, "%s\n", nthm_strerror (err)); 
 #ifdef MEMTEST
   if (pipes)
-	 fprintf (stderr, "%u unreclaimed pipe%s\n", pipes, pipes == 1 ? "" : "s");
+	 fprintf (stderr, "%ld unreclaimed pipe%s\n", pipes, pipes == 1 ? "" : "s");
   if (pipe_lists)
-	 fprintf (stderr, "%u unreclaimed pipe list%s\n", pipe_lists, pipe_lists == 1 ? "" : "s");
+	 fprintf (stderr, "%ld unreclaimed pipe list%s\n", pipe_lists, pipe_lists == 1 ? "" : "s");
   if (thread_specs)
-	 fprintf (stderr, "%u unreclaimed thread specification%s\n", thread_specs, thread_specs == 1 ? "" : "s");
+	 fprintf (stderr, "%ld unreclaimed thread specification%s\n", thread_specs, thread_specs == 1 ? "" : "s");
 #endif
 }
 
@@ -1682,9 +1566,8 @@ teardown ()
 
 
 
-
-
 // --------------- public-facing API -----------------------------------------------------------------------
+
 
 
 
@@ -1709,19 +1592,17 @@ nthm_strerror (err)
 		errno = 0;
 		sprintf (error_buffer, POSIX_FMT, strerror (err));
 		if (! errno)
-		  {
-			 pthread_mutex_unlock (&error_lock);
-			 return error_buffer;
-		  }
+		  return error_buffer;
 		return "nthm: undiagnosed POSIX error";
 	 }
   switch (err)
 	 {
-	 case NTHM_UNMANT: return "nthm: inapplicable in an unmanaged thread";
-	 case NTHM_NOTDRN: return "nthm: prohibited outside the drain thread";
+	 case NTHM_UNMANT: return "nthm: inapplicable operation in an unmanaged thread";
+	 case NTHM_NOTDRN: return "nthm: attempt to control a non-locally tethered pipe";
 	 case NTHM_NULPIP: return "nthm: null pipe";
 	 case NTHM_INVPIP: return "nthm: corrupted or invalid pipe";
 	 case NTHM_KILLED: return "nthm: interrupted by a kill notification";
+	 case NTHM_UNDFLO: return "nthm: scope underflow";
 	 default:
 		sprintf (error_buffer, IER_FMT, NTHM_VERSION_MAJOR, NTHM_VERSION_MINOR, NTHM_VERSION_PATCH, -err);
 		return error_buffer;
@@ -1750,25 +1631,25 @@ nthm_open (operator, operand, err)
   pthread_t c;
   int e;
 
-  if ((!(drain = current_or_new_context (err))) ? 1 : (drain->valid != PIPE_MAGIC) ? IER(190) : 0)
+  err = (err ? err : &ignored);
+  if (deadlocked ? IER(219) : (!(drain = current_or_new_context (err))) ? 1 : (drain->valid != MAGIC) ? IER(220) : 0)
 	 return NULL;
-  if (drain->yielded ? IER(191) : heritably_killed_or_yielded (drain, err) ? (*err = (*err ? *err : NTHM_KILLED)) : 0)
+  if (drain->yielded ? IER(221) : heritably_killed_or_yielded (drain, err) ? (*err = (*err ? *err : NTHM_KILLED)) : 0)
 	 return NULL;
-  if ((!(source = new_pipe (err))) ? 1 : ! (spec = thread_spec_of (source, operator, operand, err)))
-	 return (retired (source, err) ? NULL : NULL);
+  if (!(spec = thread_spec_of (source = new_pipe (err), operator, operand, err)))
+	 return NULL;
   if (! tethered (source, drain, err))
-	 {
-		unspecify (spec);
-		return (retired (source, err) ? NULL : NULL);
-	 }
-  if (! (e = pthread_create (&c, &thread_attribute, &manager, spec)))
+	 goto a;
+  if (!(e = pthread_create (&c, &thread_attribute, &manager, spec)))
 	 return source;
-  unspecify (spec);
-  *err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(192));
-  if (untethered (source, err) ? (! retired (source, err)) : 0)
-	 source->valid = PIPE_MUGGLE(73);
+  *err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(222));
+  if (! untethered (source, err))
+	 IER(223);
+ a: unspecify (spec, err);
   return NULL;
 }
+
+
 
 
 
@@ -1784,20 +1665,18 @@ nthm_read (source, err)
 	  // provided the pipe is not tethered to any other thread.
 {
   nthm_pipe drain;
-  void *result;
-  int e;
 
-  if (source ? 0 : (*err = (*err ? *err : NTHM_NULPIP)))
+  err = (err ? err : &ignored);
+  if (deadlocked ? IER(224) : source ? 0 : (*err = (*err ? *err : NTHM_NULPIP)))
 	 return NULL;
-  if ((source->valid == PIPE_MAGIC) ? 0 : (*err = (*err ? *err : NTHM_INVPIP)))
+  if ((source->valid == MAGIC) ? 0 : (*err = (*err ? *err : NTHM_INVPIP)))
 	 return NULL;
   if (!(drain = current_context ()))
 	 return untethered_read (source, err);
-  if (! tethered (source, drain, err))
-	 return NULL;
-  result = tethered_read (source, err);
-  return result;
+  return ((tethered (source, drain, err) ? 1 : ! IER(225)) ? tethered_read (source, err) : NULL);
 }
+
+
 
 
 
@@ -1813,23 +1692,20 @@ nthm_busy (source, err)
 {
   int busy;
 
+  err = (err ? err : &ignored);
   if (source ? 0 : (*err = (*err ? *err : NTHM_NULPIP)))
 	 return 0;
-  if ((source->valid == PIPE_MAGIC) ? 0 : (*err = (*err ? *err : NTHM_INVPIP)))
+  if ((source->valid == MAGIC) ? 0 : (*err = (*err ? *err : NTHM_INVPIP)))
 	 return 0;
-  if (pthread_mutex_lock (&(source->lock)) ? IER(193) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(74);
-		return 0;
-	 }
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(226) : 0) ? (source->valid = MUGGLE(53)) : 0)
+	 return 0;
   busy = ! source->yielded;
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(194) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(75);
-		return 0;
-	 }
-  return busy;
+  return (((pthread_mutex_unlock (&(source->lock)) ? IER(227) : 0) ? (source->valid = MUGGLE(54)) : 0) ? 0 : busy);
 }
+
+
+
+
 
 
 
@@ -1844,21 +1720,16 @@ nthm_blocked (err)
   nthm_pipe drain;
   int blocked;
 
-  if ((!(drain = current_context ())) ? 1 : (drain->valid != PIPE_MAGIC) ? IER(195) : 0)
+  err = (err ? err : &ignored);
+  if ((!(drain = current_context ())) ? 1 : (drain->valid != MAGIC) ? IER(228) : 0)
 	 return 0;
-  if (pthread_mutex_lock (&(drain->lock)) ? IER(196) : 0)
-	 {
-		drain->valid = PIPE_MUGGLE(76);
-		return 0;
-	 }
+  if ((pthread_mutex_lock (&(drain->lock)) ? IER(229) : 0) ? (drain->valid = MUGGLE(55)) : 0)
+	 return 0;
   blocked = (drain->finishers ? 0 : ! ! (drain->blockers));
-  if (pthread_mutex_unlock (&(drain->lock)) ? IER(197) : 0)
-	 {
-		drain->valid = PIPE_MUGGLE(77);
-		return 0;
-	 }
-  return blocked;
+  return (((pthread_mutex_unlock (&(drain->lock)) ? IER(230) : 0) ? (drain->valid = MUGGLE(56)) : 0) ? 0 : blocked);
 }
+
+
 
 
 
@@ -1875,37 +1746,24 @@ nthm_select (err)
 	  // pipe is available, but with blocking interrupted if the
 	  // currently running thread is killed.
 {
-  nthm_pipe source, drain;
-  int done, dead;
+  nthm_pipe s, d;
+  int k;
 
-  if ((!(drain = current_context ())) ? 1 : (drain->valid == PIPE_MAGIC) ? 0 : IER(198))
+  err = (err ? err : &ignored);
+  if (deadlocked ? IER(231) : (!(d = current_context ())) ? 1 : (d->valid == MAGIC) ? 0 : IER(232))
 	 return NULL;
-  if (pthread_mutex_lock (&(drain->lock)) ? IER(199) : 0)
-	 {
-		drain->valid = PIPE_MUGGLE(78);
-		return NULL;
-	 }
-  source = NULL;
-  dead = done = 0;
-  while (! done)
-	 if ((dead = drain->killed))
-		done = 1;
-	 else if ((source = dequeued (drain->finishers, &(drain->finisher_queue), err)) ? 1 : !(drain->blockers))
-		done = 1;
-	 else if (pthread_cond_wait (&(drain->progress), &(drain->lock)) ? IER(200) : 0)
-		{
-		  pthread_mutex_unlock (&(drain->lock));
-		  drain->valid = PIPE_MUGGLE(79);
-		  return NULL;
-		}
-  if (pthread_mutex_unlock (&(drain->lock)) ? IER(201) : 0)
-	 {
-		drain->valid = PIPE_MUGGLE(80);
-		return NULL;
-	 }
-  *err = (*err ? *err : dead ? NTHM_KILLED : 0);
-  return (dead ? NULL : source);
+  if ((pthread_mutex_lock (&(d->lock)) ? IER(233) : 0) ? (d->valid = MUGGLE(57)) : 0)
+	 return NULL;
+  s = NULL;
+  for (k = 0; (k = d->killed) ? 0 : (s = dequeued (d->finishers, &(d->finisher_queue), err)) ? 0 : ! ! (d->blockers);)
+	 if ((pthread_cond_wait (&(d->progress), &(d->lock)) ? IER(234) : 0) ? (d->valid = MUGGLE(58)) : 0)
+		break;
+  if ((pthread_mutex_unlock (&(d->lock)) ? IER(235) : 0) ? (d->valid = MUGGLE(59)) : 0)
+	 return NULL;
+  *err = (*err ? *err : k ? NTHM_KILLED : 0);
+  return s;
 }
+
 
 
 
@@ -1922,21 +1780,19 @@ nthm_truncate (source, err)
 {
   unsigned bumped;
 
+  err = (err ? err : &ignored);
   if (source ? 0 : (*err = (*err ? *err : NTHM_NULPIP)))
 	 return;
-  if ((source->valid == PIPE_MAGIC) ? 0 : (*err = (*err ? *err : NTHM_INVPIP)))
+  if ((source->valid == MAGIC) ? 0 : (*err = (*err ? *err : NTHM_INVPIP)))
 	 return;
   if ((!(source->reader)) ? 0 : (source->reader->pipe == current_context ()) ? 0 : (*err = (*err ? *err : NTHM_NOTDRN)))
 	 return;
-  if (pthread_mutex_lock (&(source->lock)) ? IER(202) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(81);
-		return;
-	 }
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(236) : 0) ? (source->valid = MUGGLE(60)) : 0)
+	 return;
   if ((bumped = source->truncation + 1))  // don't increment if it was already the maximum value
 	 source->truncation = bumped;
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(203) : 0)
-	 source->valid = PIPE_MUGGLE(82);
+  if (pthread_mutex_unlock (&(source->lock)) ? IER(237) : 0)
+	 source->valid = MUGGLE(61);
 }
 
 
@@ -1956,18 +1812,17 @@ nthm_truncate_all (err)
   nthm_pipe drain;
   unsigned bumped;
 
-  if ((!(drain = current_context ())) ? 1 : (drain->valid != PIPE_MAGIC) ? IER(204) : 0)
+  err = (err ? err : &ignored);
+  if ((!(drain = current_context ())) ? 1 : (drain->valid != MAGIC) ? IER(238) : 0)
 	 return;
-  if (pthread_mutex_lock (&(drain->lock)) ? IER(205) : 0)
-	 {
-		drain->valid = PIPE_MUGGLE(83);
-		return;
-	 }
+  if ((pthread_mutex_lock (&(drain->lock)) ? IER(239) : 0) ? (drain->valid = MUGGLE(62)) : 0)
+	 return;
   if ((bumped = drain->truncation + 1))
 	 drain->truncation = bumped;
-  if (pthread_mutex_unlock (&(drain->lock)) ? IER(206) : 0)
-	 drain->valid = PIPE_MUGGLE(84);
+  if (pthread_mutex_unlock (&(drain->lock)) ? IER(240) : 0)
+	 drain->valid = MUGGLE(63);
 }
+
 
 
 
@@ -1987,9 +1842,9 @@ nthm_truncated (err)
 {
   nthm_pipe source;
 
-  return ((source = current_context ()) ? heritably_truncated (source, err) : 0);
+  err = (err ? err : &ignored);
+  return ((source = current_context ()) ? heritably_truncated (source, err) : (*err = (*err ? *err : NTHM_UNMANT)));
 }
-
 
 
 
@@ -2005,13 +1860,15 @@ nthm_kill (source, err)
 
 	  // Tell a pipe to pack it in and make it disappear.
 {
+  err = (err ? err : &ignored);
   if ((!source) ? (*err = (*err ? *err : NTHM_NULPIP)) : 0)
 	 return;
-  if ((source->valid != PIPE_MAGIC) ? (*err = (*err ? *err : NTHM_INVPIP)) : 0)
+  if ((source->valid != MAGIC) ? (*err = (*err ? *err : NTHM_INVPIP)) : 0)
 	 return;
   if (! killable (source, err))
-	 IER(207);
+	 IER(241);
 }
+
 
 
 
@@ -2025,7 +1882,18 @@ nthm_kill_all (err)
 
 	  // Tell all pipes tethered to the current one to pack it in.
 {
-  flush (current_context (), err);
+  nthm_pipe drain, parent;
+
+  err = (err ? err : &ignored);
+  if (!(drain = current_context ()))
+	 return;
+  if ((drain->valid != MAGIC) ? (*err = (*err ? *err : NTHM_INVPIP)) : 0)
+	 return;
+  parent = drain->parents;
+  drain->parents = NULL;
+  flush (&drain, err);
+  if (drain ? 1 : ! IER(242))
+	 drain->parents = parent;
 }
 
 
@@ -2047,21 +1915,15 @@ nthm_killed (err)
   nthm_pipe source;
   int dead;
 
-  if (!(source = current_context ()) ? 1 : (source->valid != PIPE_MAGIC) ? IER(208) : 0)
-	 return 0;
-  if (pthread_mutex_lock (&(source->lock)) ? IER(209) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(85);
-		return 0;
-	 }
+  err = (err ? err : &ignored);
+  if (!(source = current_context ()) ? 1 : (source->valid != MAGIC) ? IER(243) : 0)
+	 return 1;
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(244) : 0) ? (source->valid = MUGGLE(64)) : 0)
+	 return 1;
   dead = source->killed;
-  if (pthread_mutex_unlock (&(source->lock)) ? IER(210) : 0)
-	 {
-		source->valid = PIPE_MUGGLE(86);
-		return 0;
-	 }
-  return dead;
+  return (((pthread_mutex_unlock (&(source->lock)) ? IER(245) : 0) ? (source->valid = MUGGLE(65)) : 0) ? 1 : dead);
 }
+
 
 
 
@@ -2079,13 +1941,15 @@ nthm_untether (source, err)
 	  // reclaimed automatically when the drain exits and will remain
 	  // readable by others.
 {
+  err = (err ? err : &ignored);
   if (source ? 0 : (*err = (*err ? *err : NTHM_NULPIP)))
 	 return;
-  if ((source->valid != PIPE_MAGIC) ? (*err = (*err ? *err :  NTHM_INVPIP)) : 0)
+  if ((source->valid != MAGIC) ? (*err = (*err ? *err : NTHM_INVPIP)) : 0)
 	 return;
   if (! untethered (source, err))
-	 IER(211);
+	 IER(246);
 }
+
 
 
 
@@ -2103,14 +1967,81 @@ nthm_tether (source, err)
 {
   nthm_pipe drain;
 
+  err = (err ? err : &ignored);
   if (source ? 0 : (*err = (*err ? *err : NTHM_NULPIP)))
 	 return;
-  if ((source->valid != PIPE_MAGIC) ? (*err = (*err ? *err : NTHM_INVPIP)) : !(drain = current_or_new_context (err)))
+  if ((source->valid != MAGIC) ? (*err = (*err ? *err : NTHM_INVPIP)) : !(drain = current_or_new_context (err)))
 	 return;
-  if ((drain->valid != PIPE_MAGIC) ? IER(212) : 0)
+  if ((drain->valid != MAGIC) ? IER(247) : drain->yielded ? IER(248) : 0)
 	 return;
-  if (drain->yielded ? IER(213) : heritably_killed_or_yielded (drain, err))
+  if (heritably_killed_or_yielded (drain, err))
 	 *err = (*err ? *err : NTHM_KILLED);
   else if (! tethered (source, drain, err))
-	 IER(214);
+	 IER(249);
+}
+
+
+
+
+
+
+
+
+
+void
+nthm_enter_scope (err)
+	  int *err;
+
+	  // Restrict attention to pipes opened subsequently.
+{
+  nthm_pipe child, parent;
+
+  err = (err ? err : &ignored);
+  if (deadlocked ? IER(250) : (!(parent = current_or_new_context (err))) ? 1 : (parent->valid != MAGIC) ? IER(251) : 0)
+	 return;
+  if (parent->yielded ? IER(252) : heritably_killed_or_yielded (parent, err) ? (*err = (*err ? *err : NTHM_KILLED)) : 0)
+	 return;
+  if (parent->children ? IER(253) : ! (child = new_pipe (err)))
+	 return;
+  if (set_context (child, err) ? 0 : retired (child, err) ? 1 : IER(254))
+	 return;
+  child->parents = parent;
+  parent->children = child;
+}
+
+
+
+
+
+
+
+
+
+void
+nthm_exit_scope (err)
+	  int *err;
+
+	  // Resume previous attention span. Any pipes opened since the
+	  // scope was created continue untethered.
+{
+  nthm_pipe parent, child;
+  pipe_list orphans;
+
+  err = (err ? err : &ignored);
+  if (((child = current_context ()) ? (parent = child->parents) : 0) ? 0 : (*err = (*err ? *err : NTHM_UNDFLO)))
+	 return;
+  if ((child->valid != MAGIC) ? IER(255) : child->children ? IER(256) : (child != parent->children) ? IER(257) : 0)
+	 return;
+  child->parents = parent->children = NULL;
+  do
+	 {
+		if ((pthread_mutex_lock (&(child->lock)) ? IER(258) : 0) ? (child->valid = MUGGLE(66)) : 0)
+		  break;
+		orphans = (child->finishers ? child->finishers : child->blockers);
+		if ((pthread_mutex_unlock (&(child->lock)) ? IER(259) : 0) ? (child->valid = MUGGLE(67)) : 0)
+		  break;
+	 } while (orphans ? untethered (orphans->pipe, err) : 0);
+  if (retired (child, err) ? 1 : IER(260))
+	 if (unpooled (parent, err) ? 1 : set_context (parent, err) ? 0 : ! IER(261))
+		clear_context (err);
 }

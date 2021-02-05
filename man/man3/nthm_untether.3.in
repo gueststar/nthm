@@ -73,17 +73,22 @@ in the receiving thread may then call
 .BR nthm_tether
 to acheive the same effect as having opened it locally.
 .P
-The metadata stored by
+Unlike tethered threads, memory management of untethered threads is
+such that
 .BR nthm
-about untethered threads are not automatically reclaimed unless the
-threads are tethered subsequently in some context. There is no
-requirement to follow untethering with tethering in a new context, but
-in the alternative, untethered threads should be individually read or
-killed with
-.BR nthm_read
-or
-.BR nthm_kill
-to avoid memory leaks.
+can not reclaim their metadata opportunistically because there is no
+way to detect the opportunity. Instead, the metadata persist for the
+duration of the application process or until user code running in
+another thread either kills the untethered thread with
+.BR nthm_kill,
+reads its result with
+.BR nthm_read,
+or tethers it with
+.BR nthm_tether,
+thereby allowing it to be managed accordingly. Neglecting to do any of
+those could be considered a memory leak on the part of the
+application. The amount of memory at stake is on the order of a few
+hundred bytes per thread.
 .SH RETURN VALUE
 none
 .SH ERRORS
@@ -150,15 +155,17 @@ but may be helpful in bug reports.
 .BR nthm_truncate_all (3),
 .BR nthm_truncated (3)
 .br
+.BR nthm_enter_scope (3),
+.BR nthm_exit_scope (3)
+.br
 .BR nthm_kill (3),
 .BR nthm_kill_all (3),
 .BR nthm_killed (3)
 .br
 .BR nthm_untether (3),
-.BR nthm_tether (3),
 .BR nthm_blocked (3)
-.br
 .BR nthm_strerror (3),
+.br
 .BR nthm_busy (3),
 .BR pthreads (7)
 .SH AUTHOR

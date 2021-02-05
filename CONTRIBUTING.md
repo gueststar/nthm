@@ -93,17 +93,29 @@ they are in a nutshell.
 
 The primordial data structure is a tree of pipes with one node for
 each thread managed by `nthm`. The tree is initially empty. The first
-time `nthm_open` is called in the main thread of an application, a
-root node is allocated for the main thread and a descendent is
-attached to it for the created thread. Each subsequent successful call
-to `nthm_open` allocates one new node and attaches it as a descendent
-to the one corresponding to its caller's thread.
+time `nthm_enter_scope` is called in the main thread of an
+application, a root node of the tree is allocated for it. The first
+time `nthm_open` is called after that, a descendent node is allocated
+and attached to the root. Each subsequent successful call to
+`nthm_open` allocates one new node and attaches it as a descendent to
+the one corresponding to its caller's thread. If `nthm_open` is called
+without being preceded by a call to `nthm_enter_scope`, both the root
+and its descendent are allocated at that time, but subsequent calls to
+`nthm_open` allocate only one node each. In this case, the root node
+is not reclaimed until the application exits, but otherwise it can be
+reclaimed by a corresponding call to `nthm_exit_scope`.
 
 Typically there is just one tree for the whole application with a root
 node corresponding to the main thread. Less typically, there could be
 multiple trees. Any time the application creates a thread explicitly
 with `pthread_create`, subsequent calls to `nthm_open` from within
 that thread grow a separate tree.
+
+Since version 0.4.0, root trees have been stored in a globally
+accessible list along with the nodes corresponding to untethered
+threads. This list gives `nthm` one last chance to send kill
+notifications to those that are still running after the main thread
+exits if they haven't been killed or read by then.
 
 ### Thread contexts
 
@@ -158,6 +170,17 @@ in a different pipe list whose complement points back to it.
   the descendent that is blocking or finished.
 * The complement of a reader is a term in the `blockers` or
   `finishers` list attached to the pipe whose descendent it is.
+
+### Scopes
+
+Since version 0.4.0, each pipe node is also a member of a doubly
+linked list orthogonal to the above that represents its scope
+hierarchy. Entering a scope pushes a new node in place of the current
+context with no blockers or finishers, but linked to the node
+representing its enclosing scope. Exiting a scope moves any blockers
+or finishers associated with the exited scope to the global list of
+roots, pops the node corresponding to the exited scope, and updates
+the context in thread-specific storage.
 
 ## Invariants
 

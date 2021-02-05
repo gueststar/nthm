@@ -31,6 +31,9 @@ function informs all threads created with
 in the current thread's context
 or tethered to it with
 .BR nthm_tether
+(and in the current local scope as determined by
+.BR nthm_enter_scope,
+if applicable)
 that they should shut themselves down because their
 results will be ignored and further activities curtailed.
 .P
@@ -38,7 +41,7 @@ The semantics of
 .BR nthm_kill_all
 is identical to that of calling
 .BR nthm_kill
-individually for each tethered thread.
+individually for each relevant thread.
 Notably it is an error to kill the same thread both individually and by way
 of
 .BR nthm_kill_all.
@@ -77,6 +80,12 @@ Bug reports are gratefully received.
 .BR nthm_truncate (3),
 .BR nthm_truncated (3),
 .BR nthm_truncate_all (3)
+.br
+.BR nthm_enter_scope (3),
+.BR nthm_exit_scipe (3)
+.br
+.BR nthm_enter_scope (3),
+.BR nthm_exit_scope (3)
 .br
 .BR nthm_untether (3),
 .BR nthm_tether (3)

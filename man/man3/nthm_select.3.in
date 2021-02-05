@@ -33,7 +33,13 @@ from among those
 previously opened with
 .BR nthm_open
 in the context the caller's thread, or previously tethered to it with
-.BR nthm_tether.
+.BR nthm_tether,
+and if applicable,
+opened or tethered in the same scope
+as the call to
+.BR nthm_select
+as determined by
+.BR nthm_enter_scope.
 .P
 Interleaved calls to
 .BR nthm_open,
@@ -118,6 +124,9 @@ to developers.
 .BR nthm_truncate (3),
 .BR nthm_truncate_all (3),
 .BR nthm_truncated (3)
+.br
+.BR nthm_enter_scope (3),
+.BR nthm_exit_scipe (3)
 .br
 .BR nthm_kill (3),
 .BR nthm_kill_all (3),

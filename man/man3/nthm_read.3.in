@@ -135,10 +135,12 @@ segfault.
 The
 .I source
 pipe is not safely readable because the caller's thread is not its
-"drain", which can happen only if
+"drain", which can happen only if either
 .I source
-was created in a separate thread from the caller and not untethered
-from it.
+was opened in a separate thread from the caller and not untethered
+from it, or if it was opened in the same thread but in a different
+scope as determined by
+.BR nthm_enter_scope.
 .TP
 .BR NTHM_KILLED
 Reading was interrupted because the caller's thread was killed with
@@ -147,9 +149,7 @@ or
 .BR nthm_kill_all.
 .TP
 .BR ENOMEM
-There is insufficient memory to read from a pipe. This error should be
-possible only when an untethered pipe is implicitly tethered to the
-caller's thread prior to reading.
+There is insufficient memory to read from a pipe.
 .P
 Various undocumented error codes within the range of
 .BR -NTHM_MIN_ERR
@@ -166,6 +166,9 @@ but may be helpful in bug reports.
 .BR nthm_truncate (3),
 .BR nthm_truncate_all (3),
 .BR nthm_truncated (3)
+.br
+.BR nthm_enter_scope (3),
+.BR nthm_exit_scipe (3)
 .br
 .BR nthm_kill (3),
 .BR nthm_kill_all (3),

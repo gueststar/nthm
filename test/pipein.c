@@ -8,8 +8,6 @@
 
 #define EXPECTED_INPUT 2568413717
 
-typedef void *(*nthm_worker)(void *,int *);
-
 uintptr_t
 comparator (x, err)
 	  uintptr_t x;

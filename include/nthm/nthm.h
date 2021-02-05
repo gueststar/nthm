@@ -4,7 +4,7 @@
 
 // range of negative numbers reserved for error codes
 #define NTHM_MIN_ERR 16
-#define NTHM_MAX_ERR 255
+#define NTHM_MAX_ERR 511
 
 // in 32-bit mode, the stack size in bytes in excess of PTHREAD_STACK_MIN allocated for threads
 #define NTHM_STACK_MIN 16384
@@ -16,6 +16,7 @@
 #define NTHM_NULPIP (-18)
 #define NTHM_INVPIP (-19)
 #define NTHM_KILLED (-20)
+#define NTHM_UNDFLO (-21)
 
 typedef void *(*nthm_worker)(void *,int *);  // the type of function passed to nthm_open
 
@@ -33,7 +34,7 @@ nthm_open (nthm_worker operator, void *operand, int *err);
 extern int
 nthm_blocked (int *err);
 
-// return the pipe of the next thread to finish, if any
+// return the pipe of the next thread to finish within the current scope, if any
 extern nthm_pipe
 nthm_select (int *err);
 
@@ -49,7 +50,7 @@ nthm_read (nthm_pipe source, int *err);
 extern void
 nthm_truncate (nthm_pipe source, int *err);
 
-// tell all tethered threads to shorten their output and finish up
+// tell all tethered threads in the current scope to shorten their output and finish up
 extern void
 nthm_truncate_all (int *err);
 
@@ -61,7 +62,7 @@ nthm_truncated (int *err);
 extern void
 nthm_kill (nthm_pipe source, int *err);
 
-// tell all tethered threads to finish up and that their output will be ignored
+// tell all tethered threads in the current scope to finish up and that their output will be ignored
 extern void
 nthm_kill_all (int *err);
 
@@ -76,5 +77,13 @@ nthm_untether (nthm_pipe source, int *err);
 // make an untethered thread dependent on the currently running thread
 extern void
 nthm_tether (nthm_pipe source, int *err);
+
+// restrict attention to pipes opened subsequently
+extern void
+nthm_enter_scope (int *err);
+
+// resume previous attention span
+extern void
+nthm_exit_scope (int *err);
 
 #endif

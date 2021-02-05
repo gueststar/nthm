@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 
 project(
-  nthm VERSION 0.3.8
+  nthm VERSION 0.4.0
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -98,7 +98,7 @@ set_target_properties (
 # disabled in production code because they slow it down and might not
 # be portable.
 
-# add_compile_options (-g -O0)
+add_compile_options (-g)
 
 # The MEMTEST setting enables internal diagnostics to detect some
 # memory leaks as a much faster alternative to valgrind. It's good for
@@ -215,3 +215,4 @@ testme(freepool)
 testme(rubbish)
 testme(killjoy)
 testme(bizzyb)
+testme(scopestrial)

@@ -51,7 +51,7 @@ specific error codes yield the return values shown.
 "nthm: inapplicable in an unmanaged thread"
 .TP
 .BR NTHM_NOTDRN
-"nthm: prohibited outside the drain thread"
+"nthm: attempt to control a non-locally tethered pipe"
 .TP
 .BR NTHM_NULPIP
 "nthm: null pipe"
@@ -61,6 +61,9 @@ specific error codes yield the return values shown.
 .TP
 .BR NTHM_KILLED
 "nthm: interrupted by a kill notification"
+.TP
+.BR NTHM_UNDFLO
+"nthm: scope underflow"
 .P
 Any other error code
 .I err
@@ -70,7 +73,7 @@ to
 .BR -NTHM_MAX_ERR
 yields a return value of the form
 .sp 1
-"nthm-@VERSION@: internal error code
+   "nthm-@VERSION@: internal error code
 .I err
 "
 .sp 1
@@ -83,7 +86,7 @@ POSIX standard
 .BR strerror
 function or devolve to
 .sp 1
-"nthm: undiagnosed POSIX error"
+	"nthm: undiagnosed POSIX error"
 .sp 1
 if
 .BR strerror
@@ -98,6 +101,9 @@ none
 .BR nthm_truncate (3),
 .BR nthm_truncate_all (3),
 .BR nthm_truncated (3)
+.br
+.BR nthm_enter_scope (3),
+.BR nthm_exit_scope (3)
 .br
 .BR nthm_kill (3),
 .BR nthm_kill_all (3),
