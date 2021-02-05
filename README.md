@@ -62,7 +62,7 @@ it instead of reading from it.
   its output will be ignored.
 * `nthm_kill_all` kills all threads created within the currently
   running thread.
-* `nthm_killed` poled within a thread tells it that it has been
+* `nthm_killed` polled within a thread tells it that it has been
   killed.
 
 Threads are not killed preemptively. They can take as much time as
