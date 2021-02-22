@@ -70,6 +70,7 @@ Bug reports are gratefully received.
 .SH SEE ALSO
 .BR nthm (7),
 .BR nthm_open (3),
+.BR nthm_send (3),
 .BR nthm_select (3),
 .BR nthm_read (3)
 .br
@@ -82,7 +83,7 @@ Bug reports are gratefully received.
 .BR nthm_truncate_all (3)
 .br
 .BR nthm_enter_scope (3),
-.BR nthm_exit_scipe (3)
+.BR nthm_exit_scope (3)
 .br
 .BR nthm_enter_scope (3),
 .BR nthm_exit_scope (3)

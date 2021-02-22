@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 
 project(
-  nthm VERSION 0.4.0
+  nthm VERSION 0.5.0
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -89,16 +89,20 @@ endif()
 # property to X and VERSION target property to X.Y. CMake seems to
 # require X in both places unless I'm missing something.
 
-add_library(nthm SHARED src/nthm.c)
+add_library(nthm SHARED 
+  src/errs.c
+  src/pipl.c
+  src/scopes.c
+  src/pipes.c
+  src/sync.c
+  src/pool.c
+  src/plumbing.c
+  src/context.c
+  src/protocol.c
+  src/api.c)
 
 set_target_properties (
   nthm PROPERTIES SOVERSION ${nthm_VERSION_MAJOR} VERSION ${nthm_VERSION_MAJOR}.${nthm_VERSION_MINOR})
-
-# The compiler options -g -O0 are helpful to valgrind, but should be
-# disabled in production code because they slow it down and might not
-# be portable.
-
-add_compile_options (-g)
 
 # The MEMTEST setting enables internal diagnostics to detect some
 # memory leaks as a much faster alternative to valgrind. It's good for
@@ -195,9 +199,9 @@ function(testme testname)
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/test)
   add_test (NAME ${testname} COMMAND ${testname})
   if (MEMTEST)
-	 set_tests_properties(${testname} PROPERTIES FAIL_REGULAR_EXPRESSION "nthm|unreclaimed")
+	 set_tests_properties(${testname} PROPERTIES FAIL_REGULAR_EXPRESSION "internal|unreclaimed")
   else ()
-	 set_tests_properties(${testname} PROPERTIES FAIL_REGULAR_EXPRESSION "nthm")
+	 set_tests_properties(${testname} PROPERTIES FAIL_REGULAR_EXPRESSION "internal")
   endif ()
   if (VALGRIND)
 	 add_test (NAME ${testname}_mem COMMAND ${MEMCHECK_COMMAND} ${CMAKE_CURRENT_BINARY_DIR}/${testname})
@@ -216,3 +220,4 @@ testme(rubbish)
 testme(killjoy)
 testme(bizzyb)
 testme(scopestrial)
+testme(sendany)

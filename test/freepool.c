@@ -30,7 +30,7 @@ push (h, t, err)
 {
   pipe_list l;
 
-  nthm_untether (h, err);                    // make the pipe readable in any context
+  nthm_untether (h, err);                          // make the pipe readable in any context
   if (! (l = (pipe_list) malloc (sizeof (*l))))
 	 {
 		*err = ENOMEM;
@@ -138,7 +138,7 @@ int main(argc, argv)
 		if (err ? 0 : (*cumulative_sum == EXPECTED_CUMULATIVE_SUM))
 		  {
 			 free (cumulative_sum);
-			 printf ("freepool detected no errors with seed 0x%lx\n", seed);
+			 printf ("freepool detected no errors\n");
 			 exit(EXIT_SUCCESS);
 		  }
 		free (cumulative_sum);

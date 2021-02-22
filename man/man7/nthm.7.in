@@ -65,6 +65,7 @@ reorganizing it is also available to user code through explicit
 tethering and untethering operations.
 .SH SEE ALSO
 .BR nthm_open (3),
+.BR nthm_send (3),
 .BR nthm_read (3),
 .BR nthm_select (3)
 .br

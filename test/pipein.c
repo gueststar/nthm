@@ -9,7 +9,7 @@
 #define EXPECTED_INPUT 2568413717
 
 uintptr_t
-comparator (x, err)
+comparitor (x, err)
 	  uintptr_t x;
 	  int *err;
 
@@ -32,7 +32,7 @@ main(argc, argv)
 
   err = 0;
   x = EXPECTED_INPUT;
-  result = (uintptr_t) nthm_read (nthm_open ((nthm_worker) &comparator, (void *) x, &err), &err);
+  result = (uintptr_t) nthm_read (nthm_open ((nthm_worker) &comparitor, (void *) x, &err), &err);
   if (err ? 0 : result)
 	 {
 		printf ("pipein detected no errors\n");

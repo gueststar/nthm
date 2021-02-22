@@ -119,6 +119,7 @@ to developers.
 .SH SEE ALSO
 .BR nthm (7),
 .BR nthm_open (3),
+.BR nthm_send (3),
 .BR nthm_read (3)
 .br
 .BR nthm_truncate (3),
@@ -126,7 +127,7 @@ to developers.
 .BR nthm_truncated (3)
 .br
 .BR nthm_enter_scope (3),
-.BR nthm_exit_scipe (3)
+.BR nthm_exit_scope (3)
 .br
 .BR nthm_kill (3),
 .BR nthm_kill_all (3),

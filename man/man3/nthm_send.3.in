@@ -1,0 +1,228 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM_SEND 3 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm_send \- start a new thread with no return value needed
+.SH SYNOPSIS
+#include <nthm/nthm.h>
+.sp 1
+void
+.BR nthm_send
+(
+.BR nthm_slacker
+.I mutator
+, void *
+.I operand
+, int *
+.I err
+)
+.SH DESCRIPTION
+The
+.I mutator
+argument is a pointer to a function that takes a
+void
+pointer and has no return value.
+Compatible function pointers can be cast as such by the
+.BR nthm_slacker
+type alias. The function
+.BR nthm_send
+passes
+.I operand
+to
+.I mutator
+as if the caller had invoked
+.sp 1
+.I mutator
+(
+.I operand
+);
+.sp 1
+but runs
+.I mutator
+in a separate thread from the caller.
+On 32-bit systems, the
+usable stack size allocated to the created thread is limited to
+.BR NTHM_STACK_MIN
+or roughly 16 Kbytes with a view to conserving virtual address
+space. On 64-bit systems, the default stack size (typically 8MB) is
+reserved but not physically used unless the thread's stack actually
+grows to that size.
+.P
+The
+.I mutator
+function must not call
+.BR pthread_exit.
+Its thread will terminate automatically after the function returns.
+.SH RETURN VALUE
+none
+.SH ERRORS
+The
+.I *err
+parameter is assigned a non-zero error code by
+.BR nthm_send
+if it is zero on entry and if an error is detected,
+but is left unchanged otherwise. If
+.BR nthm_send
+detects an error, then the
+.I mutator
+function is not executed.
+These error codes
+among others are possible for the reasons shown.
+.TP
+.BR EAGAIN
+Resources or permission are insufficient to create a thread.
+.TP
+.BR ENOMEM
+There is insufficient memory for a new thread or metadata.
+.TP
+.BR NTHM_KILLED
+No new threads may be created because the caller's thread has been killed.
+The thread may have been killed directly by its creator with
+.BR nthm_kill
+or
+.BR nthm_kill_all
+or indirectly due to the creator being killed or exiting.
+.P
+Other values corresponding to POSIX errors or
+.BR nthm
+internal errors in the range of
+.BR -NTHM_MIN_ERR
+to
+.BR -NTHM_MAX_ERR
+might also be assigned. Internal errors may indicate memory
+corruption, misuse of the API, or a bug in
+.BR nthm.
+Bug reports including error codes are welcome.
+.SH EXAMPLE
+An application program containing this fragment sleeps
+for at least one second after a successful call to
+.BR nthm_send
+despite the main thread exiting immediately thereafter.
+.sp 1
+.nf
+   void f (void *x)
+   {
+     sleep (1);
+   }
+
+   // ... main thread below
+
+   err = 0;
+   nthm_send ((nthm_slacker) &f, x, &err);
+   if (err)
+      printf ("%s\\n", nthm_strerror (err));
+   exit (err ? EXIT_FAILURE : EXIT_SUCCESS);
+.fi
+.SH NOTES
+This function is an alternative to the standard
+.BR pthread_create
+function that is less configurable but behaves more in line with
+expectations.
+.TP
+*
+Normally if an application creates a thread with
+.BR pthread_create
+and then exits without joining it, there is a chance of the thread never
+starting due to a race. A synchronization protocol used behind the
+scenes by
+.BR nthm_send
+ensures that the thread starts without further intervention.
+.TP
+*
+An application that exits without joining a long-running thread 
+created by
+.BR pthread_create
+incurs a risk of the thread continuing to run and mistakenly
+continuing to rely on resources that the application has released. It
+also risks prematurely indicating to the user that it
+has finished. Threads created by
+.BR nthm_send
+(and by
+.BR nthm_open
+as well) benefit from a protocol implemented behind the scenes
+that postpones the application's exit until they have yielded.
+.P
+The best use of
+.BR nthm_send
+is for background operations whose completion is
+not a prerequisite for anything but termination, such as reclaiming
+storage or closing sockets and files, and that do not use any resources
+held by the main application thread.
+.P
+If a thread created by
+.BR nthm_send
+needs access to a resource planned to be released in the main thread,
+such as an open file handle or a pointer to the heap, then the code
+that releases it should be run only in an exit routine installed by
+the standard
+.BR atexit (3)
+utility prior to the first call to any
+.BR nthm
+library function. Otherwise, there is no assurance of the resource persisting
+until the thread needs it.
+.P
+Threads created by
+.BR nthm_send
+are not affected by
+.BR nthm_kill_all
+or
+.BR nthm_truncate_all
+except insofar
+.BR nthm_send
+fails when called in a killed thread. If
+.BR nthm_killed
+or
+.BR nthm_truncated
+is called in the context of a thread created by
+.BR nthm_send,
+it will return zero.
+.P
+On 64-bit systems, use this command to display the default stack size in Kbytes.
+.sp 1
+.BR ulimit
+-s
+.SH SEE ALSO
+.BR nthm (7),
+.BR nthm_open (3),
+.BR nthm_read (3),
+.BR nthm_select (3)
+.br
+.BR nthm_truncate (3),
+.BR nthm_truncate_all (3),
+.BR nthm_truncated (3)
+.br
+.BR nthm_enter_scope (3),
+.BR nthm_exit_scope (3)
+.br
+.BR nthm_kill (3),
+.BR nthm_kill_all (3),
+.BR nthm_killed (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3),
+.br
+.BR nthm_blocked (3),
+.BR nthm_busy (3)
+.br
+.BR nthm_strerror (3),
+.BR pthreads (7),
+.BR ulimit (1),
+.BR atexit (3)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE

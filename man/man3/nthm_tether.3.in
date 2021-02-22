@@ -72,23 +72,6 @@ in the input data when a new pipe is opened. Application code running
 in the receiving thread may then call
 .BR nthm_tether
 to acheive the same effect as having opened it locally.
-.P
-Unlike tethered threads, memory management of untethered threads is
-such that
-.BR nthm
-can not reclaim their metadata opportunistically because there is no
-way to detect the opportunity. Instead, the metadata persist for the
-duration of the application process or until user code running in
-another thread either kills the untethered thread with
-.BR nthm_kill,
-reads its result with
-.BR nthm_read,
-or tethers it with
-.BR nthm_tether,
-thereby allowing it to be managed accordingly. Neglecting to do any of
-those could be considered a memory leak on the part of the
-application. The amount of memory at stake is on the order of a few
-hundred bytes per thread.
 .SH RETURN VALUE
 none
 .SH ERRORS
@@ -149,6 +132,8 @@ but may be helpful in bug reports.
 .SH SEE ALSO
 .BR nthm (7),
 .BR nthm_open (3),
+.BR nthm_send (3),
+.BR nthm_read (3),
 .BR nthm_select (3)
 .br
 .BR nthm_truncate (3),
@@ -163,8 +148,8 @@ but may be helpful in bug reports.
 .BR nthm_killed (3)
 .br
 .BR nthm_untether (3),
-.BR nthm_blocked (3)
-.BR nthm_strerror (3),
+.BR nthm_blocked (3),
+.BR nthm_strerror (3)
 .br
 .BR nthm_busy (3),
 .BR pthreads (7)

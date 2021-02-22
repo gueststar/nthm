@@ -75,6 +75,10 @@ is expected to return a value
 the size of a pointer, whereupon the thread created for it
 exits. It may also assign an error code to
 .I *err.
+Error codes set by the
+.I operator
+can be retrieved when the associated pipe is read by
+.BR nthm_read.
 The
 .I operator
 function must not directly call
@@ -107,46 +111,53 @@ For example,
 .sp 1
 .nf
    my_pipe = nthm_open ((nthm_worker) &my_function, &some_data, err);
-   ...
+   // ...
    retval = nthm_read (my_pipe, err);
 .fi
 .sp 1
 Because
 .BR nthm_read
-might need to report an error,
-error codes set by
+might need to report an error unrelated to those of the
+.I operator
+error codes set by the
 .I operator
 should be chosen not to clash with those noted below.
 .SH ERRORS
 Error codes are reported in
 .I *err
 with any non-zero value indicating an error.
-.TP
-*
 Negative numbers from
 .BR -NTHM_MIN_ERR
 to
 .BR -NTHM_MAX_ERR
-originate from
+are for internal errors originating from
 .BR nthm.
-.TP
-*
 A standard set of positive numbers is for POSIX
 error codes.
+Internal errors may be due to memory corruption,
+misuse of the API, or a bug in
+.BR nthm.
 .P
 If 
 .I *err
 is non-zero on entry,
 then
 .BR nthm_open
-does not succeed and does not change it.
+does not change it whether or not it succeeds.
+.P
+If 
+.I *err
+is zero on entry and exit,
+then
+.BR nthm_open
+has succeeded.
 .P
 If
 .I *err
 is zero on entry and non-zero on exit, then
 .BR nthm_open
-has not succeeded and may report one of these error codes for the
-reasons noted.
+has not succeeded and may report one of these error codes among others
+for the reasons noted.
 .TP
 .BR EAGAIN
 Resources or permission are insufficient to create a thread.
@@ -161,11 +172,6 @@ The thread may have been killed directly by its creator with
 or
 .BR nthm_kill_all
 or indirectly due to the creator being killed or exiting.
-.P
-Any other reported error code not present initially indicates a bug in
-.BR nthm
-that is not actionable by users but may assist developers.  Bug
-reports are most welcome.
 .SH NOTES
 On 64-bit systems, use this command to display the default stack size in Kbytes.
 .sp 1
@@ -173,6 +179,7 @@ On 64-bit systems, use this command to display the default stack size in Kbytes.
 -s
 .SH SEE ALSO
 .BR nthm (7),
+.BR nthm_send (3),
 .BR nthm_read (3),
 .BR nthm_select (3)
 .br
@@ -181,7 +188,7 @@ On 64-bit systems, use this command to display the default stack size in Kbytes.
 .BR nthm_truncated (3)
 .br
 .BR nthm_enter_scope (3),
-.BR nthm_exit_scipe (3)
+.BR nthm_exit_scope (3)
 .br
 .BR nthm_kill (3),
 .BR nthm_kill_all (3),

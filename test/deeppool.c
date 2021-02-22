@@ -68,11 +68,11 @@ main(argc, argv)
 {
   int err;
   interval x;
-  uintptr_t seed;
+  uintptr_t s;
 
   err = 0;
-  GETRANDOM(seed);
-  srand (seed);
+  GETRANDOM(s);
+  srand (s);
   if (!(x = (interval) malloc (sizeof (*x))))
 	 err = ENOMEM;
   else
@@ -82,10 +82,10 @@ main(argc, argv)
 		x->count = LAST_TERM;
 		if (sum_of_interval (x, &err) == EXPECTED_CUMULATIVE_SUM)
 		  {
-			 printf ("deeppool detected no errors with seed 0x%lx\n", seed);
+			 printf ("deeppool detected no errors\n");
 			 exit(EXIT_SUCCESS);
 		  }
 	 }
-  printf (err ? "deeppool failed with seed 0x%lx\n%s\n" : "deeppool failed with seed 0x%lx\n", seed, nthm_strerror(err));
+  printf (err ? "deeppool failed with seed 0x%lx\n%s\n" : "deeppool failed with seed 0x%lx\n", s, nthm_strerror(err));
   exit (EXIT_FAILURE);
 }

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define SCOPE_DEPTH 5
+#define SCOPE_DEPTH 1
 #define CONCURRENCY 5
 #define DELAY 10000
 

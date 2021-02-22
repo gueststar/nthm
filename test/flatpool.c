@@ -57,13 +57,13 @@ main(argc, argv)
 			 if (! nthm_open ((nthm_worker) &sum_of_interval, (void *) x, &err))
 				free (x);
 		  }
-		start = start + count;
+		start += count;
 	 }
   while (err ? NULL : (source = nthm_select (&err)))
 	 cumulative_sum += (uintptr_t) nthm_read (source, &err);
   if (err ? 0 : (cumulative_sum == EXPECTED_CUMULATIVE_SUM))
 	 {
-		printf ("flatpool detected no errors with seed 0x%lx\n", seed);
+		printf ("flatpool detected no errors\n");
 		exit(EXIT_SUCCESS);
 	 }
   printf (err ? "flatpool failed with seed 0x%lx\n%s\n" : "flatpool failed with seed 0x%lx\n", seed, nthm_strerror(err));

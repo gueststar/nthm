@@ -17,8 +17,11 @@
 #define NTHM_INVPIP (-19)
 #define NTHM_KILLED (-20)
 #define NTHM_UNDFLO (-21)
+#define NTHM_XSCOPE (-22)
 
-typedef void *(*nthm_worker)(void *,int *);  // the type of function passed to nthm_open
+typedef void *(*nthm_worker)(void *,int *);   // the type of function passed to nthm_open
+
+typedef void (*nthm_slacker)(void *);         // the type of function passed to nthm_send
 
 typedef struct nthm_pipe_struct *nthm_pipe;   // to be treated as opaque in user application code
 
@@ -29,6 +32,10 @@ nthm_strerror (int err);
 // start a new thread and return its pipe
 extern nthm_pipe
 nthm_open (nthm_worker operator, void *operand, int *err);
+
+// start a new thread with no pipe, but have it automatically reclaimed and synchronized
+extern void
+nthm_send (nthm_slacker mutator, void *operand, int *err);
 
 // collectively poll the finishers
 extern int
@@ -55,7 +62,7 @@ extern void
 nthm_truncate_all (int *err);
 
 // inquire about whether truncated output has been requested of the current thread
-extern int
+extern unsigned
 nthm_truncated (int *err);
 
 // tell a thread to finish up and that its output will be ignored

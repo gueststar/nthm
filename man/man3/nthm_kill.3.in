@@ -54,6 +54,7 @@ applies.
 *
 Eventually, subsequent calls to functions
 .BR nthm_open,
+.BR nthm_send,
 .BR nthm_read,
 .BR nthm_select,
 .BR nthm_tether,
@@ -159,13 +160,14 @@ from it or opened in the same thread but in a different scope
 as determined by
 .BR nthm_enter_scope.
 .P
-Any other error code not present intially indicates a either bug in
+Any other error code not present intially indicates either a bug in
 .BR nthm
 or an attempt to kill the same pipe more than once.
 Bug reports are gratefully received.
 .SH SEE ALSO
 .BR nthm (7),
 .BR nthm_open (3),
+.BR nthm_send (3),
 .BR nthm_select (3),
 .BR nthm_read (3)
 .br

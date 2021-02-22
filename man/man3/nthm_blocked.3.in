@@ -77,6 +77,7 @@ developers.
 .SH SEE ALSO
 .BR nthm (7),
 .BR nthm_open (3),
+.BR nthm_send (3),
 .BR nthm_select (3),
 .BR nthm_read (3)
 .br

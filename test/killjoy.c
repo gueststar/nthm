@@ -90,7 +90,7 @@ main(argc, argv)
 		total = approximate_sum_of_interval (x, &err);
 		if (! err)
 		  {
-			 printf ("killjoy detected no errors with seed 0x%lx\n", seed);
+			 printf ("killjoy detected no errors\n");
 			 exit (EXIT_SUCCESS);
 		  }
 	 }

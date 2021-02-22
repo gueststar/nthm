@@ -18,8 +18,9 @@ it easy on me by fixing up the CMakeLists.txt file accordingly. I
 don't even mind if your test says my code is crap. Please take me down
 a peg.
 
-The rest of this document pertains to modifying or extending the core
-code base.
+A good way to grok the code base is to start by reading the file
+`api.c`. The rest of this document contains tips for modifying or
+extending it.
 
 ## Coding standards
 
@@ -94,16 +95,16 @@ they are in a nutshell.
 The primordial data structure is a tree of pipes with one node for
 each thread managed by `nthm`. The tree is initially empty. The first
 time `nthm_enter_scope` is called in the main thread of an
-application, a root node of the tree is allocated for it. The first
-time `nthm_open` is called after that, a descendent node is allocated
-and attached to the root. Each subsequent successful call to
-`nthm_open` allocates one new node and attaches it as a descendent to
-the one corresponding to its caller's thread. If `nthm_open` is called
-without being preceded by a call to `nthm_enter_scope`, both the root
-and its descendent are allocated at that time, but subsequent calls to
-`nthm_open` allocate only one node each. In this case, the root node
-is not reclaimed until the application exits, but otherwise it can be
-reclaimed by a corresponding call to `nthm_exit_scope`.
+application, a root node of the tree is allocated for it. The root
+node is treated specially as a placeholder. The first time `nthm_open`
+is called after that, a descendant node is allocated and attached to
+the root. Each subsequent successful call to `nthm_open` allocates one
+new node and attaches it as a descendant to the one corresponding to
+its caller's thread. If `nthm_open` is called without being preceded
+by a call to `nthm_enter_scope`, both the root and its descendant are
+allocated at that time, but subsequent calls to `nthm_open` allocate
+only one node each. The root node is reclaimed whenever its last
+descendant yields and is read.
 
 Typically there is just one tree for the whole application with a root
 node corresponding to the main thread. Less typically, there could be
@@ -111,7 +112,7 @@ multiple trees. Any time the application creates a thread explicitly
 with `pthread_create`, subsequent calls to `nthm_open` from within
 that thread grow a separate tree.
 
-Since version 0.4.0, root trees have been stored in a globally
+Since version 0.5.0, root trees have been stored in a globally
 accessible list along with the nodes corresponding to untethered
 threads. This list gives `nthm` one last chance to send kill
 notifications to those that are still running after the main thread
@@ -131,19 +132,23 @@ It's not valid to assume that every thread corresponds to a node in a
 tree. The function `current_context` may return null for a so called
 "unmanaged" thread, which could be the main thread or any thread
 created in user code by `pthread_create` prior to their first call to
-`nthm_open`. A null context is not in itself an error.
+`nthm_open` or `nthm_enter_scope`. A null context is not in itself an
+error.
 
 ### Pipe lists
 
-Because each node in the tree can have any number of descendents, it
-stores pointers to all of them in a pipe list. There are up to three
-pipe lists attached to each node in the tree.
+Because each node in the tree can have any number of descendants, it
+stores pointers to all of them in a pipe list. There are at most two
+pipe lists for each scope attached to each node in the tree, and at
+most two others common to all scopes of node.
 
-* The `blockers` list refers to the descendents that are still
+* The `blockers` list refers to the descendants that are still
   running.
-* The `finishers` list refers to the descendents that are finished
+* The `finishers` list refers to the descendants that are finished
   running.
-* The `reader` refers to at most one node whose descendent it is.
+* The `reader` refers to at most one node whose descendant it is.
+* The `pool` points to an entry in the global root pipe pool if
+  the pipe is untethered or is a root placeholder.
 
 A pipe list is a doubly linked list to enable deleting any term given
 only a pointer to that term. Whereas the `next_pipe` field in a pipe
@@ -154,62 +159,73 @@ field is a pointer to a pointer.
   `previous_pipe` field points to the `next_pipe` field in its
   predecessor.
 * For the first term in a list, the `previous_pipe` field points to
-  whatever field in the tree node points to the first term in the list
-  (which may any of the `reader`, `blockers`, or `finishers` fields).
+  whatever field in the pipe tree node points to the first term in the
+  list (which may any of the `reader`, `blockers`, or `finishers`
+  fields).
 
 Using a pointer to a pointer as a `previous_pipe` field enables
-correctly updating the `blockers`, `finishers` or `reader` fields in a
-pipe as a side effect of deleting the first term in a list, given only
+correctly updating the `blockers`, `finishers` or `reader` fields
+as a side effect of deleting the first term in a list, given only
 a pointer to that term without knowing which list contains it or
 whether it's first.
 
-Each term in a pipe list also has a complement, which points to a term
-in a different pipe list whose complement points back to it.
+Each term in a pipe list other than the one used for the `pool` also
+has a complement, which points to a term in a different pipe list
+whose complement points back to it.
 
 * The complement of a blocker or finisher is the `reader` pipe list of
-  the descendent that is blocking or finished.
+  the descendant that is blocking or finished.
 * The complement of a reader is a term in the `blockers` or
-  `finishers` list attached to the pipe whose descendent it is.
+  `finishers` list attached to the pipe whose descendant it is.
 
 ### Scopes
 
-Since version 0.4.0, each pipe node is also a member of a doubly
-linked list orthogonal to the above that represents its scope
-hierarchy. Entering a scope pushes a new node in place of the current
-context with no blockers or finishers, but linked to the node
-representing its enclosing scope. Exiting a scope moves any blockers
-or finishers associated with the exited scope to the global list of
-roots, pops the node corresponding to the exited scope, and updates
-the context in thread-specific storage.
+Scopes are represented by a stack growing from each pipe tree node.
+The top stack entry stores the list of blockers and finishers
+associated with the currently innermost enclosed scope, and the
+rest of the stack respresents the enclosing scopes.
+
+Entering a scope pushes a new node on to the stack with no blockers or
+finishers. Exiting a scope moves any blockers or finishers associated
+with the exited scope to the global pool of root pipes and pops the
+stack. The vacated blockers or finishers remain running or waiting
+until they are read. If the application never reads them, then an exit
+routine installed by `nthm` issues a kill notification to those that
+are still running when the application exits and waits for them to
+yield.
 
 ## Invariants
 
 All threads managed by `nthm` must share a consistent view of the
-states of other threads.  The state of any thread as far as `nthm` is
-concerned amounts to these three conditions.
+states of other threads.  The state of most threads as far as `nthm`
+is concerned amounts to these three conditions.
 
 * tethered or untethered
 * running or finished
 * alive or dead
 
+Threads created by the `nthm_send` function introduced in version
+0.5.0 are a separate category discussed below.
+
 It's an error for a thread to be both tethered and dead, so there are
-six valid states left.  Some state changes entail sequences of
+six stable states left.  Some state changes entail sequences of
 operations that aren't inherently atomic, so there needs to be some
 locking to ensure mutual exclusion. (Unfamiliar territory? You'll need
-to read up on concurrent programming or don't blame me if the rest
-of this document doesn't register.)
+to read up on concurrent programming or don't blame me if the rest of
+this document doesn't register.)
 
 ### Tethered versus untethered
 
 Any thread that has a non-null `reader` field in its pipe is tethered,
 and any other thread is not. In other words, the tree node associated
-with a tethered "source" thread is always a descendent of some other
+with a tethered "source" thread is always a descendant of some other
 node in the tree (its "drain"). When a source thread changes from
 tethered to untethered, its `reader` has to be deleted along with the
 corresponding `blocker` or `finisher` in the drain (as indicated by
 the `complement` field in the `reader` pipe list). To ensure
 consistency, both nodes have to be locked while both deletions take
-place.
+place. When a pipe changes from tethered to untethered, it is also
+dropped into the root pool, which is locked separately.
 
 As a general principle, it must never happen that two threads each
 holding a lock both request a lock held by the other. To avoid this
@@ -221,7 +237,8 @@ whether the source is running or finished. If the source is running,
 then it has to be pushed to the blockers of the drain, but if it's
 finished, it has to be enqueued to the finishers. Another reason the
 source needs to be locked for tethering is in case it finishes running
-during the course of this operation.
+during the course of this operation. A pipe changing from untethered
+to tethered has to be removed from the root pool as well.
 
 ### Running versus finished
 
@@ -235,17 +252,21 @@ clean-up that happens in the context of a thread during the time
 between the moment the application code returns from the function
 supplied to `nthm_open` when it was created and the moment the thread
 actually exits via `pthread_exit`. It's an error for the pipe of a
-finished thread to have any descendents, so before yielding, every
-thread first kills its blockers and disposes of its finishers (which
-can be assumed by induction to have no descendents) ignoring their
-results. What happens next depends on whether the thread is untethered
-and dead, untethered and alive, or tethered (and held that way in any
-case at least temporarily by a lock).
+finished thread to have any descendants, so before yielding, every
+thread first untethers the pipes in its enclosing scopes, kills its
+blockers, and disposes of its finishers (which can be assumed by
+induction to have no descendants) ignoring their results. The blockers
+are also untethered in the course of being killed. What happens next
+depends on whether the thread is untethered or tethered (and held that
+way in any case at least temporarily by a lock).
 
-* If the thread is untethered and dead, it disposes of its pipe.
-* If the thread is untethered and alive, it sets its `yielded` field
-  and signals its `termination` condition to unblock the any
-  unmanaged thread that might be waiting to read from it.
+* If the thread is untethered, it sets its `yielded` field and signals
+  its `termination` condition to unblock the any thread that might be
+  waiting to read from it. As a last resort, the reading thread may be
+  the main one running the exit routine installed by `nthm`.
+* If an untethered thread finds itself to have been killed already by
+  the time it yields, then it also removes its pipe from the root pool
+  and frees it.
 * If the thread is tethered, it acquires a lock on its drain in
   addition to the one it already holds on its own pipe, moves its pipe
   from the drain's blockers to its finishers, sets its `yielded`
@@ -259,20 +280,31 @@ code.
 ### Alive versus dead
 
 A thread is dead if the `killed` field in its pipe is non-zero and is
-alive otherwise. Killing a thread entails first untethering it if it's
-tethered, and then acquiring a lock on its pipe so that it can't
-finish while being killed if it's still running.
+alive otherwise. Killing a thread entails acquiring a lock on its pipe
+so that it can't yield while being killed if it's still running, and
+also untethering it if it's presently tethered.
 
-* If the thread is found to be finished by the time the lock is
-  acquired, then its pipe is freed.
-* If the thread is still running, then its `progress` condition is
-  signaled before its pipe is unlocked and the thread is left to
-  finish. When the thread eventually finishes, it frees the pipe as
-  noted above.
+If the thread is still running when it's killed, then its `progress`
+condition is also signaled before its pipe is unlocked and the thread
+is left to finish. Signalling the `progress` condition on a running
+thread when killing it helps it finish sooner by unblocking it if it
+was blocked waiting to read from any of its blockers (as also noted
+above).
 
-Signalling the `progress` condition on a running thread when killing
-it helps it finish sooner by unblocking it if it was blocked waiting
-to read from any of its blockers (as also noted above).
+A side effect if killing a running thread is to sweep its pipe into
+the root pool.
+
+### Sent threads
+
+A thread created by `nthm_send` has a simpler life cycle than the
+above because it is never killed or read and doesn't synchronize with
+its creating thread when it yields. It participates only in the start
+registration and reclamation protocols described below. There is a
+pipe associated with the thread but no operations on the pipe are
+available to user code, and the pipe is reclaimed when the user code
+running in its context exits. Nor is there any cause for the pipe to
+enter the root pool, although pipes created under it and subsequently
+scope-vacated or untethered may do so normally.
 
 ### Other invariants
 
@@ -290,9 +322,9 @@ its source is unlocked.  Because it's meant to be polled frequently,
 the public-facing `nthm_killed` function doesn't use this criterion.
 The read and select functions don't use it either because interrupting
 them too eagerly might cause memory leaks when their caller can't free
-the results it would have received. However, `nthm_open` refrains
-from opening a new pipe if it ascertains by this condition that its
-caller's thread is as good as dead.
+the results it would have received. However, `nthm_open` and
+`nthm_send` refrain from starting a new thread if they ascertain by
+this condition that its caller's thread is as good as dead.
 
 Climbing trees is more important for getting truncation to work as
 intended. The `nthm_truncate` and `nthm_truncated` functions could
@@ -322,8 +354,8 @@ via the published API.
 
 If a pipe passed to the `nthm_read` function is untethered but the
 caller runs in the context of a managed thread (that is, one that was
-either created by `nthm_open` or has previously used `nthm_open` to
-create other threads) then it's advantageous to tether the pipe to the
+either created by `nthm_open` or has previously called `nthm_open` or
+`nthm_enter_scope`) then it's advantageous to tether the pipe to the
 caller's thread and follow the tethered reading protocol below.
 Untethered reading is done only by unmanaged threads.
 
@@ -366,6 +398,38 @@ operation can safely conclude either empty-handed or with the source's
 result, depending on whether the drain has been killed. In either
 case, the source is then killed as detailed above.
 
+### Start registration
+
+A feature necessary mainly for threads created by `nthm_send`
+introduced in version 0.5.0 but also to some extent by `nthm_open`
+resolves a race condition that might otherwise allow the application
+to exit before the thread gets a chance to start. After either routine
+creates a thread, it calls the `started` function before returning to
+the caller. Before passing control to the user code, the `nthm`
+library code running in the context of the newly created thread calls
+the `registered` function. The `started` function blocks until it
+detects the that the `registered` function has been called.
+
+This protocol may be more complicated than it seems because multiple
+threads can call both functions concurrently. A count of `starters`
+locked by the `starter_lock` mutex and incremented only by the
+`registered` function stores the number of threads that have
+registered without yet being detected. The `started` function waits
+only when the count is zero.  If the `registered` function precedes
+the `started` function, the latter decrements the count without
+waiting. Conversely, the `registered` function doesn't send a signal
+if the count is already positive, but only increments the count.
+
+It's not a problem for a signal meant for one thread to be detected by
+another if they were scheduled out of order. However, it might well be
+problematic for a waiting thread not to be woken up until after
+another one comes and goes, having zeroed the count with no need to
+intercept the signal itself. The solution is for the `registered`
+function to broadcast the `started` signal (rather than just sending
+it) whenever it increments the count from zero to one as it atomically
+releases the `starter_lock`, and for the `started` function to wait on
+the signal as many times as needed until `starters` goes positive.
+
 ### Thread resource reclamation
 
 When the application process exits, something has to be done about the
@@ -388,38 +452,37 @@ particular protocol best motivated by an out-of-order explanation.
 * After the application code in each thread yields and the state of
   its pipe exposed via the API is updated accordingly, the `nthm`
   library code still running in the thread's context waits for the
-  `junction` signal authorizing it to call `pthread_exit`, which it
+  `finished` signal authorizing it to call `pthread_exit`, which it
   does only after receiving the signal.
 * This signal usually comes from the next thread to yield, which
   synchronizes with its predecessor by calling `pthread_join`. The
   call to `pthread_join` blocks until it can be guaranteed that the
   predecessor thread has exited.
 * The succeeeding thread then behaves just like its predecessor in
-  that it waits for `junction` before calling `pthread_exit`.
-* If there is no successor because the one waiting is last, the signal
-  is sent instead by code running in the context of the main thread,
-  having been installed there previously via `at_exit` during
-  initialization of the library.
+  that it waits for `finished` before calling `pthread_exit`.
+* The last running thread, which has no successor, sends the
+  `last_runner` signal before waiting for `finished`. The
+  `last_runner` signal is awaited by the exit code of the main thread
+  previously installed by `nthm` during initialization, which takes
+  over by sending the `finished` signal.
 
 A few other details hold this protocol together. To join with its
 predecessor, each thread needs to know its predecessor's identifier as
 given by `pthread_self`, so prior to waiting for the signal, each
-thread stores its identifier in the static variable `joinable_thread`.
-However, because multiple threads may yield concurrently, a thread may
-find this variable already occupied by a concurrently yielding
-thread's identifier, so before storing its own identifier, it deals
-with the current one by sending the signal itself and then joining
-with the concurrently yielding thread. Any number of threads may yield
-and store their identifiers ahead of it, so a thread must be prepared
-to join with each one in turn before getting its chance.
+thread stores its identifier in the static variable
+`finishing_thread`.  However, because multiple threads may yield
+concurrently, a thread may find this variable already occupied by a
+concurrently yielding thread's identifier, so before storing its own
+identifier, it deals with the current one by sending the `finished`
+signal itself and then joining with the concurrently yielding
+thread. Any number of threads may yield and store their identifiers
+ahead of it, so a thread must be prepared to join with each one in
+turn before getting its chance.
 
 The protocol for the exit routine code is slightly different because
 it has to ensure that it joins only with the last thread. Although it
 is reached only after the application leaves its `main` routine or
-explicitly calls `exit`, more pipes might still be opened if the exit
-routine code doesn't first change the state of all surviving root
-pipes to killed, thereby disabling `nthm_open`. To detect the last
-thread, it checks a count maintained in `running_threads` and if
-necessary waits for the signal `last_thread`, which is signaled by any
-exiting thread before it waits for `junction` if it detects the count
-dropping to zero.
+explicitly calls `exit`, more pipes might still be opened. To detect
+the last thread, it checks a count maintained in `running_threads` and
+if necessary waits for the signal `last_thread`, which is sent by any
+exiting thread before it waits for `finished`.

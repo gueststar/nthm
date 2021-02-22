@@ -101,7 +101,7 @@ main(argc, argv)
 		if (approximate_sum_of_interval (x, &err) + global_shortfall == EXPECTED_CUMULATIVE_SUM)
 		  {
 			 pthread_mutex_destroy (&global_lock);
-			 printf ("rubbish detected no errors with seed 0x%lx\n", seed);
+			 printf ("rubbish detected no errors\n");
 			 exit (EXIT_SUCCESS);
 		  }
 		pthread_mutex_destroy (&global_lock);
