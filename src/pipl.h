@@ -17,9 +17,6 @@
   along with nthm. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef NTHM_PIPL_H
-#define NTHM_PIPL_H 1
-
 #include <nthm.h>
 
 // This file declares functions for operating on pipe list data
@@ -83,5 +80,3 @@ _nthm_bilaterally_freed (pipe_list r, pipe_list b, int *err);
 // write errors to stderr
 extern void
 _nthm_close_pipl ();
-
-#endif

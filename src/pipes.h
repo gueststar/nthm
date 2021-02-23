@@ -20,7 +20,6 @@
 // non-API non-mutating operations on the nthm_pipe data structure
 
 #include <nthm.h>
-#include "pipl.h"
 #include "scopes.h"
 
 struct nthm_pipe_struct

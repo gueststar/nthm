@@ -28,7 +28,6 @@
 #include "context.h"
 #include "pipes.h"
 #include "scopes.h"
-#include "pipl.h"
 #include "errs.h"
 
 // used to initialize static storage

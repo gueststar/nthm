@@ -24,7 +24,6 @@
 #include <string.h>
 #include <pthread.h>
 #include "errs.h"
-#include "pipl.h"
 #include "pipes.h"
 #include "scopes.h"
 #include "plumbing.h"
