@@ -133,7 +133,9 @@ status of
 .BR NTHM_NOTDRN,
 just as if the pipes had been tethered to a different thread.
 .SH RETURN VALUE
-none
+A non-zero value is returned by
+.BR nthm_enter_scope
+if it succeeds.
 .SH ERRORS
 .P
 If

@@ -86,7 +86,7 @@ extern void
 nthm_tether (nthm_pipe source, int *err);
 
 // restrict attention to pipes opened subsequently
-extern void
+extern int
 nthm_enter_scope (int *err);
 
 // resume previous attention span

@@ -558,7 +558,7 @@ nthm_tether (source, err)
 
 
 
-void
+int
 nthm_enter_scope (err)
 	  int *err;
 
@@ -566,13 +566,12 @@ nthm_enter_scope (err)
 {
   nthm_pipe p;
 
-  API_ENTRY_POINT();
+  API_ENTRY_POINT(0);
   if (*deadlocked ? IER(70) : (!(p = _nthm_current_or_new_context (err))) ? 1 : (p->valid != MAGIC) ? IER(71) : 0)
-	 return;
+	 return 0;
   if (p->yielded ? IER(72) : _nthm_heritably_killed_or_yielded (p, err) ? (*err = (*err ? *err : NTHM_KILLED)) : 0)
-	 return;
-  if (! _nthm_scope_entered (p, err))
-	 IER(73);
+	 return 0;
+  return _nthm_scope_entered (p, err);
 }
 
 
