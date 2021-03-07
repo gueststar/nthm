@@ -34,7 +34,7 @@ extern nthm_pipe
 nthm_open (nthm_worker operator, void *operand, int *err);
 
 // start a new thread with no pipe, but have it automatically reclaimed and synchronized
-extern void
+extern int
 nthm_send (nthm_slacker mutator, void *operand, int *err);
 
 // collectively poll the finishers

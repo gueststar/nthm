@@ -20,9 +20,9 @@ nthm_open \- start a new thread and return a pipe from it
 .BR nthm_pipe
 .BR nthm_open
 (nthm_worker
-.I operator
-, void *
-.I operand
+.I &operator
+, void
+.I *operand
 , int
 .I *err
 )

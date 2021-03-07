@@ -17,11 +17,11 @@ nthm_send \- start a new thread with no return value needed
 .SH SYNOPSIS
 #include <nthm/nthm.h>
 .sp 1
-void
+int
 .BR nthm_send
 (
 .BR nthm_slacker
-.I mutator
+.I &mutator
 , void *
 .I operand
 , int *
@@ -65,7 +65,9 @@ function must not call
 .BR pthread_exit.
 Its thread will terminate automatically after the function returns.
 .SH RETURN VALUE
-none
+Zero is returned if
+.BR nthm_send
+is unsuccessful for any reason. A non-zero value is returned otherwise.
 .SH ERRORS
 The
 .I *err

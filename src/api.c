@@ -169,7 +169,7 @@ nthm_open (operator, operand, err)
 
 
 
-void
+int
 nthm_send (mutator, operand, err)
 	  nthm_slacker mutator;
 	  void *operand;
@@ -187,19 +187,20 @@ nthm_send (mutator, operand, err)
 #define WRITE_ONLY 1
 #define NO_OPERATOR NULL
 
-  API_ENTRY_POINT();
+  API_ENTRY_POINT(0);
   if (*deadlocked ? IER(31) : 0)
-	 return;
+	 return 0;
   if ((!(d = _nthm_current_context (err))) ? 0 : (d->valid != MAGIC) ? IER(32) : d->yielded ? IER(33) : 0)
-	 return;
+	 return 0;
   if ((! d) ? 0 : _nthm_heritably_killed_or_yielded (d, err) ? (*err = (*err ? *err : NTHM_KILLED)) : 0)
-	 return;
+	 return 0;
   if (!(spec = _nthm_thread_spec_of (_nthm_new_pipe (err), NO_OPERATOR, mutator, operand, WRITE_ONLY, err)))
-	 return;
+	 return 0;
   if ((e = pthread_create (&c, &thread_attribute, &_nthm_manager, spec)) ? 0 : _nthm_started (err))
-	 return;
+	 return 0;
   *err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(34));
   _nthm_unspecify (spec, err);
+  return 1;
 }
 
 
