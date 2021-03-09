@@ -29,13 +29,13 @@ nthm_open \- start a new thread and return a pipe from it
 .SH DESCRIPTION
 The
 .I operator
-argument is a pointer to a function that takes a
+argument is a function that takes a
 .BR void
 pointer and an
 .BR int
 pointer and returns a
 .BR void
-pointer.  Compatible function pointers can be cast as such by the
+pointer.  Compatible functions can be cast as such by the
 .BR nthm_worker
 type alias. The function
 .BR nthm_open
@@ -43,7 +43,7 @@ passes the parameters
 .I operand
 and
 .I err
-to the function
+to
 .I operator
 as if the caller had invoked
 .sp 1
@@ -67,29 +67,34 @@ space. On 64-bit systems, the default stack size (typically 8MB) is
 reserved but not physically used unless the thread's stack actually
 grows to that size.
 .P
-The 
+When
 .I operator
-function
-is expected to return a value
-.BR retval
-the size of a pointer, whereupon the thread created for it
-exits. It may also assign an error code to
-.I *err.
-Error codes set by the
-.I operator
-can be retrieved when the associated pipe is read by
-.BR nthm_read.
+returns its result, the thread created for it exits.
 The
 .I operator
-function must not directly call
+function must 
+.BR *not*
+call
 .BR pthread_exit
-itself.
+explicitly. If
+.I operator
+assigns an error code to
+.I *err,
+the error code
+is available to the reader of
+the pipe returned by
+.BR nthm_open.
+To avoid ambiguity,
+.I operator
+should avoid assigning error codes
+that clash with
+those noted below.
 .SH RETURN VALUE
 If
 .BR nthm_open
-does not succeed, it returns NULL and the
+does not succeed, it returns NULL and
 .I operator
-function is not called.
+is not run.
 .P
 If
 .BR nthm_open
@@ -103,10 +108,6 @@ that may be used in subsequent calls to
 .BR nthm_tether,
 and
 .BR nthm_busy.
-Both the return value and the error code set by
-.I operator
-will be readable subsequently from
-the pipe.
 For example,
 .sp 1
 .nf
@@ -114,50 +115,29 @@ For example,
    // ...
    retval = nthm_read (my_pipe, err);
 .fi
-.sp 1
-Because
-.BR nthm_read
-might need to report an error unrelated to those of the
-.I operator
-error codes set by the
-.I operator
-should be chosen not to clash with those noted below.
 .SH ERRORS
-Error codes are reported in
+If
 .I *err
-with any non-zero value indicating an error.
+is zero on entry and
+.BR nthm_open
+does not succeed, it
+assigns a non-zero number to
+.I *err.
+Otherwise, it leaves 
+.I *err
+unchanged.
 Negative numbers from
 .BR -NTHM_MIN_ERR
 to
 .BR -NTHM_MAX_ERR
-are for internal errors originating from
-.BR nthm.
-A standard set of positive numbers is for POSIX
-error codes.
+report internal errors.
 Internal errors may be due to memory corruption,
 misuse of the API, or a bug in
 .BR nthm.
-.P
-If 
-.I *err
-is non-zero on entry,
-then
-.BR nthm_open
-does not change it whether or not it succeeds.
-.P
-If 
-.I *err
-is zero on entry and exit,
-then
-.BR nthm_open
-has succeeded.
-.P
-If
-.I *err
-is zero on entry and non-zero on exit, then
-.BR nthm_open
-has not succeeded and may report one of these error codes among others
-for the reasons noted.
+(Bug reports are welcome.)
+Positive numbers report POSIX
+errors.
+The following specific errors are possible.
 .TP
 .BR EAGAIN
 Resources or permission are insufficient to create a thread.
