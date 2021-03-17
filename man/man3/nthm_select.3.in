@@ -26,20 +26,19 @@ nthm_select \- return a pipe from the next thread to finish
 The
 .BR nthm_select
 function
-retrieves a pipe
+obtains a pipe
 whose return value is ready to be read.
 The pipe is selected
 from among those
 previously opened with
 .BR nthm_open
 in the context the caller's thread, or previously tethered to it with
-.BR nthm_tether,
-and if applicable,
-opened or tethered in the same scope
-as the call to
-.BR nthm_select
-as determined by
-.BR nthm_enter_scope.
+.BR nthm_tether.
+If multiple scopes exist in the caller's thread due to
+previous calls to
+.BR nthm_enter_scope,
+the pipe is selected only from among those opened or tethered in the
+most recently entered scope.
 .P
 Interleaved calls to
 .BR nthm_open,
@@ -50,7 +49,7 @@ are an efficient way to run a pool of worker threads
 without unnecessary blocking because
 .BR nthm_select
 never blocks unless there is no choice because
-all threads are busy.
+all threads in the current scope are busy.
 .P
 Applications can check whether a call to
 .BR nthm_select
@@ -59,7 +58,8 @@ would block by polling
 .SH RETURN VALUE
 Each successful call to
 .BR nthm_select
-returns a fresh pipe previously opened within the caller's context by
+returns a fresh pipe previously opened within the caller's context and
+scope by
 .BR nthm_open
 or tethered to it by
 .BR nthm_tether
@@ -71,8 +71,9 @@ will be available via subsequent calls to
 .P
 An unsuccessful call to
 .BR nthm_select
-also returns a NULL result. NULL results can be disambiguated by the
-error code as explained below.
+also returns a NULL result. Whether a NULL result indicates a
+successful call when there are no more pipes or an unsuccessful call
+or can be determined by the error code as explained below.
 .P
 Any pipe returned by
 .BR nthm_select
@@ -114,8 +115,7 @@ or
 .P
 Undocumented error codes also may be assigned to
 .I *err
-if internal consistency checks fail, which are helpful in bug reports
-to developers.
+if internal consistency checks fail, which are helpful in bug reports.
 .SH SEE ALSO
 .BR nthm (7),
 .BR nthm_open (3),
