@@ -73,7 +73,7 @@ An unsuccessful call to
 .BR nthm_select
 also returns a NULL result. Whether a NULL result indicates a
 successful call when there are no more pipes or an unsuccessful call
-or can be determined by the error code as explained below.
+can be determined by the error code as explained below.
 .P
 Any pipe returned by
 .BR nthm_select
