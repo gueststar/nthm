@@ -92,6 +92,7 @@ eradicate (err)
 		  return;
 		while (*err ? NULL : (p = (q ? _nthm_unilaterally_delisted (q, err) : NULL)))
 		  {
+			 _nthm_vacate_scopes (p, err);
 			 if ((p->valid != MAGIC) ? IER(210) : p->reader ? IER(211) : p->pool ? (! ! (p->pool = NULL)) : IER(212))
 				return;
 			 if (_nthm_retirable (p, err) ? (_nthm_retired (p, err) ? 1 : IER(213)) : 0)

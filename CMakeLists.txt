@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 
 project(
-  nthm VERSION 0.7.3
+  nthm VERSION 0.7.4
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -80,15 +80,6 @@ endif()
 
 #-------------- shared library --------------
 
-# It's standard practice on GNU/Linux systems to install a shared
-# library with symbolic links like libnthm.so -> libnthm.so.X ->
-# libnthm.so.X.Y, where X and Y are respectively the major and minor
-# version numbers. The convention is that libraries differing only in
-# Y are API compatible but an increment to X signifies a breaking
-# change. To install these symbolic links, set the SOVERSION target
-# property to X and VERSION target property to X.Y. CMake seems to
-# require X in both places unless I'm missing something.
-
 add_library(nthm SHARED 
   src/errs.c
   src/pipl.c
@@ -100,6 +91,15 @@ add_library(nthm SHARED
   src/context.c
   src/protocol.c
   src/api.c)
+
+# It's standard practice on GNU/Linux systems to install a shared
+# library with symbolic links like libnthm.so -> libnthm.so.X ->
+# libnthm.so.X.Y, where X and Y are respectively the major and minor
+# version numbers. The convention is that libraries differing only in
+# Y are API compatible but an increment to X signifies a breaking
+# change. To install these symbolic links, set the SOVERSION target
+# property to X and VERSION target property to X.Y. CMake seems to
+# require X in both places unless I'm missing something.
 
 set_target_properties (
   nthm PROPERTIES SOVERSION ${nthm_VERSION_MAJOR} VERSION ${nthm_VERSION_MAJOR}.${nthm_VERSION_MINOR})
