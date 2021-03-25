@@ -597,7 +597,7 @@ nthm_exit_scope (err)
   API_ENTRY_POINT();
   if ((p = _nthm_current_context ()) ? 0 : (*err = (*err ? *err : NTHM_UNDFLO)))
 	 return;
-  if (((e = p->scope) ? 0 : IER(74)) ? (p->valid = MUGGLE(22)) : 0)
+  if (((e = p->scope) ? 0 : IER(73)) ? (p->valid = MUGGLE(22)) : 0)
 	 return;
   if ((!(e->enclosure)) ? (*err = (*err ? *err : NTHM_UNDFLO)) : ! _nthm_descendants_untethered (p, err))
 	 return;

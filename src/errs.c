@@ -56,9 +56,9 @@ _nthm_error_checking_mutex_type (a, err)
 
 	  // Initialize the attributes for a mutex to use error checking.
 {
-  if ((!a) ? IER(79) : pthread_mutexattr_init (a) ? IER(80) : 0)
+  if ((!a) ? IER(78) : pthread_mutexattr_init (a) ? IER(79) : 0)
 	 return 0;
-  if (!(pthread_mutexattr_settype (a, PTHREAD_MUTEX_ERRORCHECK) ? IER(81) : 0))
+  if (!(pthread_mutexattr_settype (a, PTHREAD_MUTEX_ERRORCHECK) ? IER(80) : 0))
 	 return 1;
   pthread_mutexattr_destroy (a);
   return 0;
@@ -81,12 +81,12 @@ _nthm_open_errs (err)
 	 global_error[i] = 0;
   if (! _nthm_error_checking_mutex_type (&mutex_attribute, err))
 	 return 0;
-  if (pthread_mutex_init (&error_lock, &mutex_attribute) ? IER(82) : 0)
+  if (pthread_mutex_init (&error_lock, &mutex_attribute) ? IER(81) : 0)
 	 {
 		pthread_mutexattr_destroy (&mutex_attribute);
 		return 0;
 	 }
-  if (pthread_mutexattr_destroy (&mutex_attribute) ? (! IER(83)) : 1)
+  if (pthread_mutexattr_destroy (&mutex_attribute) ? (! IER(82)) : 1)
 	 return 1;
   pthread_mutex_destroy (&error_lock);
   return 0;
@@ -106,7 +106,7 @@ _nthm_close_errs ()
   int last_error;
   unsigned i;
 
-  if (deadlocked ? 0 : (last_error = (pthread_mutex_destroy (&error_lock) ? THE_IER(84) : 0)) ? (error_count + 1) : 0)
+  if (deadlocked ? 0 : (last_error = (pthread_mutex_destroy (&error_lock) ? THE_IER(83) : 0)) ? (error_count + 1) : 0)
 	 {
 		if (error_count < ERROR_LIMIT)
 		  global_error[error_count] = last_error;

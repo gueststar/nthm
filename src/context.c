@@ -44,7 +44,7 @@ _nthm_open_context (err)
 
 	  // Create the thread specific storage key.
 {
-  return ! (pthread_key_create (&cursor, NULL) ? IER(75) : 0);
+  return ! (pthread_key_create (&cursor, NULL) ? IER(74) : 0);
 }
 
 
@@ -57,7 +57,7 @@ _nthm_close_context ()
 
 	  // Free the thread specific storage key.
 {
-  _nthm_globally_throw (pthread_key_delete (cursor) ? THE_IER(76) : 0);
+  _nthm_globally_throw (pthread_key_delete (cursor) ? THE_IER(75) : 0);
 }
 
 
@@ -96,7 +96,7 @@ _nthm_set_context (drain, err)
 
   if (!(e = pthread_setspecific (cursor, (void *) drain)))
 	 return 1;
-  *err = (*err ? *err : (e == ENOMEM) ? e : (e = EAGAIN) ? e : THE_IER(77));
+  *err = (*err ? *err : (e == ENOMEM) ? e : (e = EAGAIN) ? e : THE_IER(76));
   return 0;
 }
 
@@ -141,6 +141,6 @@ _nthm_current_or_new_context (err)
 	 goto a;
   if (_nthm_set_context (drain, err))
 	 return drain;
-  a: if (_nthm_retired (drain, err) ? 1 : IER(78))
+  a: if (_nthm_retired (drain, err) ? 1 : IER(77))
 	 return NULL;
 }

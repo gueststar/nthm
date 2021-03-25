@@ -59,9 +59,9 @@ lazy_initialization ()
   err = 0;
   if (! _nthm_error_checking_mutex_type (&a, &err))
 	 goto a;
-  if (pthread_mutex_init (&memtest_lock, &a) ? (err = THE_IER(124)) : 0)
+  if (pthread_mutex_init (&memtest_lock, &a) ? (err = THE_IER(123)) : 0)
 	 goto b;
-  if (pthread_mutexattr_destroy (&a) ? (!(err = THE_IER(125))) : 1)
+  if (pthread_mutexattr_destroy (&a) ? (!(err = THE_IER(124))) : 1)
 	 return;
   pthread_mutex_destroy (&memtest_lock);
   goto a;
@@ -81,7 +81,7 @@ _nthm_close_pipl ()
 {
 #ifdef MEMTEST
   pthread_once (&once_control, lazy_initialization);
-  _nthm_globally_throw (pthread_mutex_destroy (&memtest_lock) ? THE_IER(126) : 0);
+  _nthm_globally_throw (pthread_mutex_destroy (&memtest_lock) ? THE_IER(125) : 0);
   if (pipe_lists)
 	 fprintf (stderr, "%ld unreclaimed pipe list%s\n", pipe_lists, pipe_lists == 1 ? "" : "s");
 #endif
@@ -108,7 +108,7 @@ _nthm_pipe_list_of (p, err)
 #ifdef MEMTEST
   pthread_once (&once_control, lazy_initialization);
 #endif
-  if ((p ? 0 : IER(127)) ? 1 : (t = (pipe_list) malloc (sizeof (*t))) ? 0 : (*err = (*err ? *err : ENOMEM)))
+  if ((p ? 0 : IER(126)) ? 1 : (t = (pipe_list) malloc (sizeof (*t))) ? 0 : (*err = (*err ? *err : ENOMEM)))
 	 return NULL;
 #ifdef MEMTEST
   pthread_mutex_lock (&memtest_lock);
@@ -136,7 +136,7 @@ _nthm_new_complementary_pipe_lists (r, d, b, s, err)
 	  // Allocate and initialize complementary unit pipe lists r of d
 	  // and b of s if there is sufficient memory.
 {
-  if ((! b) ? IER(128) : (! r) ? IER(129) : ! (*r = _nthm_pipe_list_of (d, err)))
+  if ((! b) ? IER(127) : (! r) ? IER(128) : ! (*r = _nthm_pipe_list_of (d, err)))
 	 return 0;
   if ((*b = _nthm_pipe_list_of (s, err)))
 	 {
@@ -144,7 +144,7 @@ _nthm_new_complementary_pipe_lists (r, d, b, s, err)
 		(*r)->complement = *b;
 		return 1;
 	 }
-  if (_nthm_freed (*r, err) ? 1 : IER(130))
+  if (_nthm_freed (*r, err) ? 1 : IER(129))
 	 *r = NULL;
   return 0;
 }
@@ -164,7 +164,7 @@ _nthm_pushed (t, b, err)
 
 	  // Concatenate a unit list t with a list b.
 {
-  if ((! t) ? IER(131) : (! b) ? IER(132) : t->previous_pipe ? IER(133) : t->next_pipe ? IER(134) : 0)
+  if ((! t) ? IER(130) : (! b) ? IER(131) : t->previous_pipe ? IER(132) : t->next_pipe ? IER(133) : 0)
 	 return 0;
   if ((t->next_pipe = *(t->previous_pipe = b)))
 	 (*b)->previous_pipe = &(t->next_pipe);
@@ -191,9 +191,9 @@ _nthm_enqueued (t, f, q, err)
 {
   pipe_list *p;
 
-  if ((! f) ? IER(135) : (! q) ? IER(136) : ((! *f) != ! *q) ? IER(137) : (!*q) ? 0 : (*q)->next_pipe ? IER(138) : 0)
+  if ((! f) ? IER(134) : (! q) ? IER(135) : ((! *f) != ! *q) ? IER(136) : (!*q) ? 0 : (*q)->next_pipe ? IER(137) : 0)
 	 return 0;
-  return ((! _nthm_pushed (t, p = (*q ? &((*q)->next_pipe) : f), err)) ? 0 : (*q = *p) ? 1 : ! IER(139));
+  return ((! _nthm_pushed (t, p = (*q ? &((*q)->next_pipe) : f), err)) ? 0 : (*q = *p) ? 1 : ! IER(138));
 }
 
 
@@ -216,7 +216,7 @@ _nthm_severed (t, err)
 
 	  // Remove an item from a pipe list without freeing it.
 {
-  if ((! t) ? IER(140) : t->previous_pipe ? 0 : IER(141))
+  if ((! t) ? IER(139) : t->previous_pipe ? 0 : IER(140))
 	 return 0;
   if ((*(t->previous_pipe) = t->next_pipe))
 	 t->next_pipe->previous_pipe = t->previous_pipe;
@@ -243,11 +243,11 @@ _nthm_freed (r, err)
 #ifdef MEMTEST
   pthread_once (&once_control, lazy_initialization);
 #endif
-  if ((! r) ? IER(142) : r->next_pipe ? IER(143) : r->previous_pipe ? IER(144) : 0)
+  if ((! r) ? IER(141) : r->next_pipe ? IER(142) : r->previous_pipe ? IER(143) : 0)
 	 return 0;
   if (r->complement)
 	 {
-		if ((r->complement->complement == r) ? 0 : IER(145))
+		if ((r->complement->complement == r) ? 0 : IER(144))
 		  return 0;
 		r->complement->complement = NULL;
 	 }
@@ -277,7 +277,7 @@ _nthm_unilaterally_delisted (t, err)
 {
   nthm_pipe p;
 
-  if ((p = (t ? t->pipe : NULL)) ? 0 : IER(146))
+  if ((p = (t ? t->pipe : NULL)) ? 0 : IER(145))
 	 return NULL;
   return ((_nthm_severed (t, err) ? _nthm_freed (t, err) : 0) ? p : NULL);
 }
@@ -298,7 +298,7 @@ popped (f, err)
 
 	  // Return the first pipe in a list f and bilaterally delist it.
 {
-  if ((!f) ? IER(147) : ! _nthm_unilaterally_delisted (f->complement, err))
+  if ((!f) ? IER(146) : ! _nthm_unilaterally_delisted (f->complement, err))
 	 return NULL;
   return _nthm_unilaterally_delisted (f, err);
 }
@@ -323,7 +323,7 @@ _nthm_dequeued (f, q, err)
 {
   nthm_pipe p;
 
-  if (((! f) != ! *q) ? IER(148) : ! f)
+  if ((! q) ? IER(147) : ((! f) != ! *q) ? IER(148) : ! f)
 	 return NULL;
   if (f != *q)
 	 return popped (f, err);
@@ -352,13 +352,13 @@ _nthm_bilaterally_dequeued (r, f, q, err)
   nthm_pipe p;
   pipe_list c;
 
-  if ((! r) ? IER(149) : (c = r->complement) ? 0 : IER(150))
+  if ((! q) ? IER(149) : (! r) ? IER(150) : (c = r->complement) ? 0 : IER(151))
 	 return NULL;
   if (c == f)
 	 return _nthm_dequeued (f, q, err);
   if (c != *q)
 	 return popped (c, err);
-  if (f ? 0 : IER(151))
+  if (f ? 0 : IER(152))
 	 return NULL;
   p = popped (*q, err);
   for (*q = f; (*q)->next_pipe; *q = (*q)->next_pipe);
@@ -382,7 +382,7 @@ _nthm_bilaterally_freed (r, b, err)
 
 	  // Free a pair of complementary unit pipe lists.
 {
-  if ((! r) ? IER(152) : (! b) ? IER(153) : (r->complement != b) ? IER(154) : (b->complement != r) ? IER(155) : 0)
+  if ((! r) ? IER(153) : (! b) ? IER(154) : (r->complement != b) ? IER(155) : (b->complement != r) ? IER(156) : 0)
 	 return 0;
-  return ((_nthm_freed (r, err) ? 1 : IER(156)) ? _nthm_freed (b, err) : 0);
+  return ((_nthm_freed (r, err) ? 1 : IER(157)) ? _nthm_freed (b, err) : 0);
 }

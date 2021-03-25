@@ -58,7 +58,7 @@ _nthm_open_pipes (err)
   if (! _nthm_error_checking_mutex_type (&mutex_attribute, err))
 	 return 0;
 #ifdef MEMTEST
-  if (pthread_mutex_init (&memtest_lock, &mutex_attribute) ? IER(85) : 0)
+  if (pthread_mutex_init (&memtest_lock, &mutex_attribute) ? IER(84) : 0)
 	 {
 		pthread_mutexattr_destroy (&mutex_attribute);
 		return 0;
@@ -78,9 +78,9 @@ _nthm_close_pipes ()
 	  // Report memory leaks if memory testing is enabled for
 	  // development and diagnostics.
 {
-  _nthm_globally_throw (pthread_mutexattr_destroy (&mutex_attribute) ? THE_IER(86) : 0);
+  _nthm_globally_throw (pthread_mutexattr_destroy (&mutex_attribute) ? THE_IER(85) : 0);
 #ifdef MEMTEST
-  _nthm_globally_throw (pthread_mutex_destroy (&memtest_lock) ? THE_IER(87) : 0);
+  _nthm_globally_throw (pthread_mutex_destroy (&memtest_lock) ? THE_IER(86) : 0);
   if (pipes)
 	 fprintf (stderr, "%ld unreclaimed pipe%s\n", pipes, pipes == 1 ? "" : "s");
 #endif
@@ -131,7 +131,7 @@ _nthm_new_pipe (err)
  c: pthread_cond_destroy (&(p->progress));
  b: pthread_cond_destroy (&(p->termination));
  a: free (p);
-  *err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(88));
+  *err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(87));
   return NULL;
 }
 
@@ -154,15 +154,15 @@ _nthm_retired (p, err)
 {
   scope_stack e;
 
-  if ((! p) ? IER(89) : (p->valid != MAGIC) ? IER(90) : ((e = p->scope) ? 0 : IER(91)) ? (p->valid = MUGGLE(23)) : 0)
+  if ((! p) ? IER(88) : (p->valid != MAGIC) ? IER(89) : ((e = p->scope) ? 0 : IER(90)) ? (p->valid = MUGGLE(23)) : 0)
 	 return 0;
-  if (e->enclosure ? IER(92) : ! _nthm_scope_exited (p, err))
+  if (e->enclosure ? IER(91) : ! _nthm_scope_exited (p, err))
 	 return 0;
-  if ((pthread_cond_destroy (&(p->termination)) ? IER(93) : 0) ? (p->valid = MUGGLE(24)) : 0)
+  if ((pthread_cond_destroy (&(p->termination)) ? IER(92) : 0) ? (p->valid = MUGGLE(24)) : 0)
 	 return 0;
-  if ((pthread_cond_destroy (&(p->progress)) ? IER(94) : 0) ? (p->valid = MUGGLE(25)) : 0)
+  if ((pthread_cond_destroy (&(p->progress)) ? IER(93) : 0) ? (p->valid = MUGGLE(25)) : 0)
 	 return 0;
-  if ((pthread_mutex_destroy (&(p->lock)) ? IER(95) : 0) ? (p->valid = MUGGLE(26)) : 0)
+  if ((pthread_mutex_destroy (&(p->lock)) ? IER(94) : 0) ? (p->valid = MUGGLE(26)) : 0)
 	 return 0;
   p->valid = MUGGLE(27);  // ensure detection of dangling references
   free (p);
@@ -199,26 +199,26 @@ _nthm_heritably_killed_or_yielded (source, err)
   nthm_pipe drain;
   int h;
 
-  if ((!source) ? IER(96) : (source->valid != MAGIC) ? IER(97) : 0)
+  if ((!source) ? IER(95) : (source->valid != MAGIC) ? IER(96) : 0)
 	 return 0;
-  if ((pthread_mutex_lock (&(source->lock)) ? IER(98) : 0) ? (source->valid = MUGGLE(28)) : 0)
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(97) : 0) ? (source->valid = MUGGLE(28)) : 0)
 	 return 0;
   if (!(h = (source->yielded ? 1 : source->killed)))
 	 for (; source->reader; source = drain)
 		{
-		  if ((!(drain = source->reader->pipe)) ? IER(99) : (drain->valid != MAGIC) ? IER(100) : 0)
+		  if ((!(drain = source->reader->pipe)) ? IER(98) : (drain->valid != MAGIC) ? IER(99) : 0)
 			 break;
-		  if ((pthread_mutex_lock (&(drain->lock)) ? IER(101) : 0) ? (drain->valid = MUGGLE(29)) : 0)
+		  if ((pthread_mutex_lock (&(drain->lock)) ? IER(100) : 0) ? (drain->valid = MUGGLE(29)) : 0)
 			 break;
 		  if ((h = (drain->yielded ? 1 : drain->killed)))
 			 goto a;
-		  if ((pthread_mutex_unlock (&(source->lock)) ? IER(102) : 0) ? (source->valid = MUGGLE(30)) : 0)
-			 return ((pthread_mutex_unlock (&(drain->lock)) ? IER(103) : 0) ? (! (drain->valid = MUGGLE(31))) : 0);
+		  if ((pthread_mutex_unlock (&(source->lock)) ? IER(101) : 0) ? (source->valid = MUGGLE(30)) : 0)
+			 return ((pthread_mutex_unlock (&(drain->lock)) ? IER(102) : 0) ? (! (drain->valid = MUGGLE(31))) : 0);
 		  continue;
-		  a: if ((pthread_mutex_unlock (&(drain->lock)) ? IER(104) : 0) ? (drain->valid = MUGGLE(32)) : 1)
+		  a: if ((pthread_mutex_unlock (&(drain->lock)) ? IER(103) : 0) ? (drain->valid = MUGGLE(32)) : 1)
 			 break;
 		}
-  return ((pthread_mutex_unlock (&(source->lock)) ? IER(105) : 0) ? (! (source->valid = MUGGLE(33))) : h);
+  return ((pthread_mutex_unlock (&(source->lock)) ? IER(104) : 0) ? (! (source->valid = MUGGLE(33))) : h);
 }
 
 
@@ -245,33 +245,33 @@ _nthm_heritably_truncated (source, err)
   scope_stack e;       // local scope
   unsigned h;          // return value
 
-  if ((!source) ? IER(106) : (source->valid != MAGIC) ? IER(107) : 0)
+  if ((!source) ? IER(105) : (source->valid != MAGIC) ? IER(106) : 0)
 	 return 0;
-  if ((pthread_mutex_lock (&(source->lock)) ? IER(108) : 0) ? (source->valid = MUGGLE(34)) : 0)
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(107) : 0) ? (source->valid = MUGGLE(34)) : 0)
 	 return 0;
   if (!(h = (source->yielded ? 1 : source->killed)))
 	 for (; source->reader; source = drain)
 		{
-		  if ((!(drain = source->reader->pipe)) ? IER(109) : (drain->valid != MAGIC) ? IER(110) : 0)
+		  if ((!(drain = source->reader->pipe)) ? IER(108) : (drain->valid != MAGIC) ? IER(109) : 0)
 			 break;
-		  if ((pthread_mutex_lock (&(drain->lock)) ? IER(111) : 0) ? (drain->valid = MUGGLE(35)) : 0)
+		  if ((pthread_mutex_lock (&(drain->lock)) ? IER(110) : 0) ? (drain->valid = MUGGLE(35)) : 0)
 			 break;
-		  if (((e = drain->scope) ? 0 : IER(112)) ? (drain->valid = MUGGLE(36)) : 0)
+		  if (((e = drain->scope) ? 0 : IER(111)) ? (drain->valid = MUGGLE(36)) : 0)
 			 goto a;
-		  if ((((l = _nthm_scope_level (drain, err)) < source->depth) ? IER(113) : 0) ? (source->valid = MUGGLE(37)) : 0)
+		  if ((((l = _nthm_scope_level (drain, err)) < source->depth) ? IER(112) : 0) ? (source->valid = MUGGLE(37)) : 0)
 			 goto a;
 		  for (l = l - source->depth; l; l--)
-			 if (((e = e->enclosure) ? 0 : IER(114)) ? (drain->valid = MUGGLE(38)) : 0)
+			 if (((e = e->enclosure) ? 0 : IER(113)) ? (drain->valid = MUGGLE(38)) : 0)
 				goto a;
 		  if ((h = e->truncation))
 			 goto a;
-		  if ((pthread_mutex_unlock (&(source->lock)) ? IER(115) : 0) ? (source->valid = MUGGLE(39)) : 0)
-			 return ((pthread_mutex_unlock (&(drain->lock)) ? IER(116) : 0) ? (!(drain->valid = MUGGLE(40))) : 0);
+		  if ((pthread_mutex_unlock (&(source->lock)) ? IER(114) : 0) ? (source->valid = MUGGLE(39)) : 0)
+			 return ((pthread_mutex_unlock (&(drain->lock)) ? IER(115) : 0) ? (!(drain->valid = MUGGLE(40))) : 0);
 		  continue;
-		a: if ((pthread_mutex_unlock (&(drain->lock)) ? IER(117) : 0) ? (drain->valid = MUGGLE(41)) : 1)
+		a: if ((pthread_mutex_unlock (&(drain->lock)) ? IER(116) : 0) ? (drain->valid = MUGGLE(41)) : 1)
 			 break;
 		}
-  return ((pthread_mutex_unlock (&(source->lock)) ? IER(118) : 0) ? (! (source->valid = MUGGLE(42))) : h);
+  return ((pthread_mutex_unlock (&(source->lock)) ? IER(117) : 0) ? (! (source->valid = MUGGLE(42))) : h);
 }
 
 
@@ -296,11 +296,11 @@ _nthm_retirable (p, err)
   scope_stack e;
   int q;
 
-  if ((! p) ? IER(119) : (p->valid != MAGIC) ? IER(120) : 0)
+  if ((! p) ? IER(118) : (p->valid != MAGIC) ? IER(119) : 0)
 	 return 0;
-  if ((pthread_mutex_lock (&(p->lock)) ? IER(121) : 0) ? (p->valid = MUGGLE(43)) : 0)
+  if ((pthread_mutex_lock (&(p->lock)) ? IER(120) : 0) ? (p->valid = MUGGLE(43)) : 0)
 	 return 0;
-  if (!(((e = p->scope) ? 0 : IER(122)) ? (p->valid = MUGGLE(44)) : (q = 0)))
+  if (!(((e = p->scope) ? 0 : IER(121)) ? (p->valid = MUGGLE(44)) : (q = 0)))
 	 q = (e->enclosure ? 0 : e->blockers ? 0 : e->finishers ? 0 : p->placeholder ? 1 : p->yielded ? p->killed : 0);
-  return (((pthread_mutex_unlock (&(p->lock)) ? IER(123) : 0) ? (p->valid = MUGGLE(45)) : 0) ? 0 : q);
+  return (((pthread_mutex_unlock (&(p->lock)) ? IER(122) : 0) ? (p->valid = MUGGLE(45)) : 0) ? 0 : q);
 }

@@ -90,10 +90,10 @@ _nthm_stack_limited_thread_type (a, err)
 	  // systems, use small stacks.
 
 {
-  if ((!a) ? IER(294) : pthread_attr_init (a) ? IER(295) : 0)
+  if ((!a) ? IER(295) : pthread_attr_init (a) ? IER(296) : 0)
 	 return 0;
 #ifdef USE_SMALL_STACKS
-  if (pthread_attr_setstacksize (a, PTHREAD_STACK_MIN + NTHM_STACK_MIN) ? IER(296) : 0)
+  if (pthread_attr_setstacksize (a, PTHREAD_STACK_MIN + NTHM_STACK_MIN) ? IER(297) : 0)
 	 {
 		pthread_attr_destroy (a);
 		return 0;
@@ -115,21 +115,21 @@ _nthm_open_sync (err)
 {
   pthread_mutexattr_t a;
 
-  if (deadlocked ? IER(297) : ! _nthm_error_checking_mutex_type (&a, err))
+  if (deadlocked ? IER(298) : ! _nthm_error_checking_mutex_type (&a, err))
 	 return 0;
-  if (pthread_mutex_init (&starter_lock, &a) ? IER(298) : 0)
+  if (pthread_mutex_init (&starter_lock, &a) ? IER(299) : 0)
 	 goto a;
-  if (pthread_mutex_init (&runner_lock, &a) ? IER(299) : 0)
+  if (pthread_mutex_init (&runner_lock, &a) ? IER(300) : 0)
 	 goto b;
 #ifdef MEMTEST
-  if (pthread_mutex_init (&memtest_lock, &a) ? IER(300) : 0)
+  if (pthread_mutex_init (&memtest_lock, &a) ? IER(301) : 0)
 	 goto c;
 #endif
-  if ((pthread_mutexattr_destroy (&a) ? 1 : pthread_cond_init (&last_runner, NULL)) ? IER(301) : 0)
+  if ((pthread_mutexattr_destroy (&a) ? 1 : pthread_cond_init (&last_runner, NULL)) ? IER(302) : 0)
 	 goto d;
-  if (pthread_cond_init (&started, NULL) ? IER(302) : 0)
+  if (pthread_cond_init (&started, NULL) ? IER(303) : 0)
 	 goto e;
-  if (pthread_cond_init (&finished, NULL) ? IER(303) : 0)
+  if (pthread_cond_init (&finished, NULL) ? IER(304) : 0)
 	 goto f;
   return 1;
  f: pthread_cond_destroy (&started);
@@ -167,18 +167,18 @@ release_pthread_resources (err)
 {
 #ifdef MEMTEST
   if (pthread_mutex_destroy (&memtest_lock))
-	 IER(304);
+	 IER(305);
 #endif
   if (pthread_mutex_destroy (&starter_lock))
-	 IER(305);
-  else if (pthread_cond_destroy (&started))
 	 IER(306);
-  if (pthread_mutex_destroy (&runner_lock) ? IER(307) : 0)
+  else if (pthread_cond_destroy (&started))
+	 IER(307);
+  if (pthread_mutex_destroy (&runner_lock) ? IER(308) : 0)
 	 return;
   if (pthread_cond_destroy (&finished))
-	 IER(308);
-  if (pthread_cond_destroy (&last_runner))
 	 IER(309);
+  if (pthread_cond_destroy (&last_runner))
+	 IER(310);
 }
 
 
@@ -200,7 +200,7 @@ _nthm_close_sync ()
   _nthm_synchronize (&err);
   if (! deadlocked)
 	 release_pthread_resources (&err);
-  _nthm_globally_throw (err ? err : deadlocked ? THE_IER(310) : 0);
+  _nthm_globally_throw (err ? err : deadlocked ? THE_IER(311) : 0);
 #ifdef MEMTEST
   if (thread_specs)
 	 fprintf (stderr, "%ld unreclaimed thread specification%s\n", thread_specs, thread_specs == 1 ? "" : "s");
@@ -236,7 +236,7 @@ _nthm_thread_spec_of (source, operator, mutator, operand, write_only, err)
   thread_spec t;
 
   if (source ? ((t = (thread_spec) malloc (sizeof (*t))) ? 0 : (*err = (*err ? *err : ENOMEM))) : 1)
-	 if (source ? (_nthm_retired (source, err) ? 1 : IER(311)) : 1)
+	 if (source ? (_nthm_retired (source, err) ? 1 : IER(312)) : 1)
 		return NULL;
   bzero (t, sizeof (*t));
   t->write_only = write_only;
@@ -265,9 +265,9 @@ _nthm_unspecify (t, err)
 
 	  // Free a thread specification structure.
 {
-  if (t ? 0 : IER(312))
+  if (t ? 0 : IER(313))
 	 return;
-  if ((!(t->pipe)) ? 1 : _nthm_retired (t->pipe, err) ? 1 : IER(313))
+  if ((!(t->pipe)) ? 1 : _nthm_retired (t->pipe, err) ? 1 : IER(314))
 	 free (t);
 #ifdef MEMTEST
   pthread_mutex_lock (&memtest_lock);
@@ -294,17 +294,17 @@ _nthm_registered (err)
 	  // has started. This function should be called by the start
 	  // routine of a new thread when it starts.
 {
-  if (deadlocked ? 1 : pthread_mutex_lock (&runner_lock) ? (deadlocked = IER(314)) : 0)
+  if (deadlocked ? 1 : pthread_mutex_lock (&runner_lock) ? (deadlocked = IER(315)) : 0)
 	 return 0;
-  if ((runners += (starting = 1)) ? 0 : IER(315))
+  if ((runners += (starting = 1)) ? 0 : IER(316))
 	 deadlocked = 1;
-  if (pthread_mutex_unlock (&runner_lock) ? (deadlocked = IER(316)) : 0)
+  if (pthread_mutex_unlock (&runner_lock) ? (deadlocked = IER(317)) : 0)
 	 return 0;
-  if (deadlocked ? 1 : pthread_mutex_lock (&starter_lock) ? (deadlocked = IER(317)) : 0)
+  if (deadlocked ? 1 : pthread_mutex_lock (&starter_lock) ? (deadlocked = IER(318)) : 0)
 	 return 0;
-  if (starters++ ? 0 : (! starters) ? IER(318) : pthread_cond_broadcast (&started) ? IER(319) : 0)
+  if (starters++ ? 0 : (! starters) ? IER(319) : pthread_cond_broadcast (&started) ? IER(320) : 0)
 	 deadlocked = 1;
-  if (pthread_mutex_unlock (&starter_lock) ? IER(320) : 0)
+  if (pthread_mutex_unlock (&starter_lock) ? IER(321) : 0)
 	 deadlocked = 1;
   return ! deadlocked;
 }
@@ -326,11 +326,11 @@ _nthm_started (err)
 	  // creating it.
 {
 
-  if (deadlocked ? 1 : pthread_mutex_lock (&starter_lock) ? (deadlocked = IER(321)) : 0)
+  if (deadlocked ? 1 : pthread_mutex_lock (&starter_lock) ? (deadlocked = IER(322)) : 0)
 	 return 0;
-  while (deadlocked ? 0 : starters ? 0 : ! (pthread_cond_wait (&started, &starter_lock) ? IER(322) : 0));
+  while (deadlocked ? 0 : starters ? 0 : ! (pthread_cond_wait (&started, &starter_lock) ? IER(323) : 0));
   starters -= ! deadlocked;
-  return ! (pthread_mutex_unlock (&starter_lock) ? (deadlocked = IER(323)) : deadlocked);
+  return ! (pthread_mutex_unlock (&starter_lock) ? (deadlocked = IER(324)) : deadlocked);
 }
 
 
@@ -355,27 +355,27 @@ _nthm_relay_race (err)
   void *leak;
   pthread_t f;
 
-  if (deadlocked ? 1 : pthread_mutex_lock (&runner_lock) ? (deadlocked = IER(324)) : 0)
+  if (deadlocked ? 1 : pthread_mutex_lock (&runner_lock) ? (deadlocked = IER(325)) : 0)
 	 return;
   while (finishers ? finishers-- : 0)
 	 {
 		f = finishing_thread;
-		if (pthread_cond_signal (&finished) ? (deadlocked = IER(325)) : 0)
+		if (pthread_cond_signal (&finished) ? (deadlocked = IER(326)) : 0)
 		  goto a;
-		if ((pthread_mutex_unlock (&runner_lock) ? 1 : pthread_join (f, &leak)) ? (deadlocked = IER(326)) : 0)
+		if ((pthread_mutex_unlock (&runner_lock) ? 1 : pthread_join (f, &leak)) ? (deadlocked = IER(327)) : 0)
 		  return;
 		if (leak)
-		  IER(327);
-		if (deadlocked ? 1 : pthread_mutex_lock (&runner_lock) ? (deadlocked = IER(328)) : 0)
+		  IER(328);
+		if (deadlocked ? 1 : pthread_mutex_lock (&runner_lock) ? (deadlocked = IER(329)) : 0)
 		  return;
 	 }
   finishers++;
   finishing_thread = pthread_self ();
-  if ((! runners) ? (deadlocked = IER(329)) : --runners ? 0 : pthread_cond_signal (&last_runner) ? (deadlocked = IER(330)) : 0)
+  if ((! runners) ? (deadlocked = IER(330)) : --runners ? 0 : pthread_cond_signal (&last_runner) ? (deadlocked = IER(331)) : 0)
 	 goto a;
-  if (deadlocked ? 1 : pthread_cond_wait (&finished, &runner_lock) ? IER(331) : 0)
+  if (deadlocked ? 1 : pthread_cond_wait (&finished, &runner_lock) ? IER(332) : 0)
 	 deadlocked = 1;
- a: if (pthread_mutex_unlock (&runner_lock) ? IER(332) : 0)
+ a: if (pthread_mutex_unlock (&runner_lock) ? IER(333) : 0)
 	 deadlocked = 1;
 }
 
@@ -398,19 +398,19 @@ _nthm_synchronize (err)
   void *leak;
 
   leak = NULL;
-  if (deadlocked ? 1 : pthread_mutex_lock (&runner_lock) ? (deadlocked = IER(333)) : 0)
+  if (deadlocked ? 1 : pthread_mutex_lock (&runner_lock) ? (deadlocked = IER(334)) : 0)
 	 return;
-  if (starting ? 0 : pthread_mutex_unlock (&runner_lock) ? (deadlocked = IER(334)) : 1)
+  if (starting ? 0 : pthread_mutex_unlock (&runner_lock) ? (deadlocked = IER(335)) : 1)
 	 return;
   starting = 0;
-  if (deadlocked ? 1 : (! runners) ? 0 : pthread_cond_wait (&last_runner, &runner_lock) ? IER(335) : 0)
+  if (deadlocked ? 1 : (! runners) ? 0 : pthread_cond_wait (&last_runner, &runner_lock) ? IER(336) : 0)
 	 deadlocked = 1;
-  if (pthread_cond_signal (&finished) ? IER(336) : 0)
+  if (pthread_cond_signal (&finished) ? IER(337) : 0)
 	 deadlocked = 1;
-  if (pthread_mutex_unlock (&runner_lock) ? IER(337) : 0)
+  if (pthread_mutex_unlock (&runner_lock) ? IER(338) : 0)
 	 deadlocked = 1;
-  if (pthread_join (finishing_thread, &leak) ? IER(338) : 0)
+  if (pthread_join (finishing_thread, &leak) ? IER(339) : 0)
 	 deadlocked = 1;
   if (leak)
-	 IER(339);
+	 IER(340);
 }

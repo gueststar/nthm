@@ -53,25 +53,25 @@ _nthm_tethered (s, d, err)
   scope_stack e;
   pipe_list r, w;   // the source's reader and the drain's finisher or blocker
 
-  if ((! d) ? IER(157) : (d->valid != MAGIC) ? IER(158) : (! s) ? IER(159) : (s->valid != MAGIC) ? IER(160) : 0)
+  if ((! d) ? IER(158) : (d->valid != MAGIC) ? IER(159) : (! s) ? IER(160) : (s->valid != MAGIC) ? IER(161) : 0)
 	 return 0;
-  if ((pthread_mutex_lock (&(s->lock)) ? IER(161) : 0) ? (s->valid = MUGGLE(46)) : 0)
+  if ((pthread_mutex_lock (&(s->lock)) ? IER(162) : 0) ? (s->valid = MUGGLE(46)) : 0)
 	 return 0;
   if ((!(s->reader)) ? (t = 0) : _nthm_drained_by (s, d, err) ? (t = 1) : ! (t = ! (*err = (*err ? *err : NTHM_NOTDRN))))
 	 goto a;
-  if (s->killed ? IER(162) : (pthread_mutex_lock (&(d->lock)) ? IER(163) : 0) ? (d->valid = MUGGLE(47)) : 0)
+  if (s->killed ? IER(163) : (pthread_mutex_lock (&(d->lock)) ? IER(164) : 0) ? (d->valid = MUGGLE(47)) : 0)
 	 goto a;
-  if (((e = d->scope) ? 0 : IER(164)) ? (d->valid = MUGGLE(48)) : ! _nthm_new_complementary_pipe_lists (&r, d, &w, s, err))
+  if (((e = d->scope) ? 0 : IER(165)) ? (d->valid = MUGGLE(48)) : ! _nthm_new_complementary_pipe_lists (&r, d, &w, s, err))
 	 goto b;
-  if (_nthm_pushed (r, &(s->reader), err) ? 0 : _nthm_bilaterally_freed (r, w, err) ? 1 : IER(165))
+  if (_nthm_pushed (r, &(s->reader), err) ? 0 : _nthm_bilaterally_freed (r, w, err) ? 1 : IER(166))
 	 goto b;
   if (t = (s->yielded ? _nthm_enqueued (w, &(e->finishers), &(e->finisher_queue), err) : _nthm_pushed (w, &(e->blockers), err)))
 	 s->depth = _nthm_scope_level (d, err);
   else if (!(_nthm_freed (w, err) ? _nthm_unilaterally_delisted (s->reader, err) : NULL))
 	 s->valid = MUGGLE(49);
- b: if (pthread_mutex_unlock (&(d->lock)) ? IER(166) : 0)
+ b: if (pthread_mutex_unlock (&(d->lock)) ? IER(167) : 0)
 	 d->valid = MUGGLE(50);
- a: if (pthread_mutex_unlock (&(s->lock)) ? IER(167) : 0)
+ a: if (pthread_mutex_unlock (&(s->lock)) ? IER(168) : 0)
 	 s->valid = MUGGLE(51);
   _nthm_displace (s, err);
   return t;
@@ -99,25 +99,25 @@ _nthm_untethered (s, err)
   nthm_pipe d;
   int done;
 
-  if ((! s) ? IER(168) : (s->valid == MAGIC) ? 0 : IER(169))
+  if ((! s) ? IER(169) : (s->valid == MAGIC) ? 0 : IER(170))
 	 return 0;
   if (done = ! (s->reader))
 	 return _nthm_pooled (s, err);
   if (_nthm_drained_by (s, d = _nthm_current_context (), err) ? 0 : (*err = (*err ? *err : NTHM_NOTDRN)))
 	 return 0;
-  if ((! d) ? IER(170) : (d->valid != MAGIC) ? IER(171) : 0)
+  if ((! d) ? IER(171) : (d->valid != MAGIC) ? IER(172) : 0)
 	 return 0;
-  if ((pthread_mutex_lock (&(s->lock)) ? IER(172) : 0) ? (s->valid = MUGGLE(52)) : 0)
+  if ((pthread_mutex_lock (&(s->lock)) ? IER(173) : 0) ? (s->valid = MUGGLE(52)) : 0)
 	 return 0;
-  if ((pthread_mutex_lock (&(d->lock)) ? IER(173) : 0) ? (d->valid = MUGGLE(53)) : 0)
+  if ((pthread_mutex_lock (&(d->lock)) ? IER(174) : 0) ? (d->valid = MUGGLE(53)) : 0)
 	 goto a;
-  if (((e = d->scope) ? 0 : IER(174)) ? (d->valid = MUGGLE(54)) : 0)
+  if (((e = d->scope) ? 0 : IER(175)) ? (d->valid = MUGGLE(54)) : 0)
 	 goto b;
   if (!(done = (s == _nthm_bilaterally_dequeued (s->reader, e->finishers, &(e->finisher_queue), err))))
 	 s->valid = d->valid = MUGGLE(55);
- b: if (pthread_mutex_unlock (&(d->lock)) ? IER(175) : 0)
+ b: if (pthread_mutex_unlock (&(d->lock)) ? IER(176) : 0)
 	 d->valid = MUGGLE(56);
- a: if (pthread_mutex_unlock (&(s->lock)) ? IER(176) : 0)
+ a: if (pthread_mutex_unlock (&(s->lock)) ? IER(177) : 0)
 	 s->valid = MUGGLE(57);
   if (done)
 	 _nthm_unpool (d, err);
@@ -143,16 +143,16 @@ _nthm_descendants_untethered (p, err)
   pipe_list c;
   int done;
 
-  if ((! p) ? IER(177) : (p->valid != MAGIC) ? IER(178) : 0)
+  if ((! p) ? IER(178) : (p->valid != MAGIC) ? IER(179) : 0)
 	 return 0;
   do
 	 {
-		if ((pthread_mutex_lock (&(p->lock)) ? IER(179) : 0) ? (p->valid = MUGGLE(58)) : 0)
+		if ((pthread_mutex_lock (&(p->lock)) ? IER(180) : 0) ? (p->valid = MUGGLE(58)) : 0)
 		  return 0;
-		if (((e = p->scope) ? 0 : IER(180)) ? (p->valid = MUGGLE(59)) : 0)
-		  return ((pthread_mutex_unlock (&(p->lock)) ? IER(181) : 0) ? (!(p->valid = MUGGLE(60))) : 0);
+		if (((e = p->scope) ? 0 : IER(181)) ? (p->valid = MUGGLE(59)) : 0)
+		  return ((pthread_mutex_unlock (&(p->lock)) ? IER(182) : 0) ? (!(p->valid = MUGGLE(60))) : 0);
 		c = (e->finishers ? e->finishers : e->blockers);
-		if ((pthread_mutex_unlock (&(p->lock)) ? IER(182) : 0) ? (p->valid = MUGGLE(61)) : 0)
+		if ((pthread_mutex_unlock (&(p->lock)) ? IER(183) : 0) ? (p->valid = MUGGLE(61)) : 0)
 		  return 0;
 	 } while (c ? _nthm_untethered (c->pipe, err) : 0);
   return 1;
@@ -178,14 +178,14 @@ _nthm_killable (s, err)
 
 	  // Kill and untether a pipe, which may entail pooling or retiring it.
 {
-  if ((!s) ? IER(183) : (s->valid != MAGIC) ? IER(184) : 0)
+  if ((!s) ? IER(184) : (s->valid != MAGIC) ? IER(185) : 0)
 	 return 0;
-  if ((pthread_mutex_lock (&(s->lock)) ? IER(185) : 0) ? (s->valid = MUGGLE(62)) : 0)
+  if ((pthread_mutex_lock (&(s->lock)) ? IER(186) : 0) ? (s->valid = MUGGLE(62)) : 0)
 	 return 0;
   s->killed = 1;
-  if (s->yielded ? 0 : pthread_cond_signal (&(s->progress)) ? IER(186) : 0)
+  if (s->yielded ? 0 : pthread_cond_signal (&(s->progress)) ? IER(187) : 0)
 	 s->valid = MUGGLE(63);
-  return ((pthread_mutex_unlock (&(s->lock)) ? IER(187) : 0) ? (!(s->valid = MUGGLE(64))) : _nthm_untethered (s, err));
+  return ((pthread_mutex_unlock (&(s->lock)) ? IER(188) : 0) ? (!(s->valid = MUGGLE(64))) : _nthm_untethered (s, err));
 }
 
 
@@ -211,22 +211,22 @@ blockers_killed (d, err)
   scope_stack e;
   int done;
 
-  if ((! d) ? IER(188) : (d->valid != MAGIC) ? IER(189) : d->placeholder ? IER(190) : 0)
+  if ((! d) ? IER(189) : (d->valid != MAGIC) ? IER(190) : d->placeholder ? IER(191) : 0)
 	 return 0;
-  if ((pthread_mutex_lock (&(d->lock)) ? IER(191) : 0) ? (d->valid = MUGGLE(65)) : 0)
+  if ((pthread_mutex_lock (&(d->lock)) ? IER(192) : 0) ? (d->valid = MUGGLE(65)) : 0)
 	 return 0;
-  if (d->yielded ? IER(192) : ((e = d->scope) ? 0 : IER(193)) ? (d->valid = MUGGLE(66)) : 0)
-	 return ((pthread_mutex_unlock (&(d->lock)) ? IER(194) : 0) ? (!(d->valid = MUGGLE(67))) : 0);
+  if (d->yielded ? IER(193) : ((e = d->scope) ? 0 : IER(194)) ? (d->valid = MUGGLE(66)) : 0)
+	 return ((pthread_mutex_unlock (&(d->lock)) ? IER(195) : 0) ? (!(d->valid = MUGGLE(67))) : 0);
   while (! (done = ! (e->blockers)))
 	 {
 		if ((s = e->blockers->pipe) ? 0 : (d->valid = MUGGLE(68)))
 		  break;
-		if ((pthread_mutex_unlock (&(d->lock)) ? IER(195) : 0) ? (d->valid = MUGGLE(69)) : ! _nthm_killable (s, err))
+		if ((pthread_mutex_unlock (&(d->lock)) ? IER(196) : 0) ? (d->valid = MUGGLE(69)) : ! _nthm_killable (s, err))
 		  return 0;
-		if ((pthread_mutex_lock (&(d->lock)) ? IER(196) : 0) ? (d->valid = MUGGLE(70)) : 0)
+		if ((pthread_mutex_lock (&(d->lock)) ? IER(197) : 0) ? (d->valid = MUGGLE(70)) : 0)
 		  return 0;
 	 }
-  return (((pthread_mutex_unlock (&(d->lock)) ? IER(197) : 0) ? (d->valid = MUGGLE(71)) : 0) ? 0 : done);
+  return (((pthread_mutex_unlock (&(d->lock)) ? IER(198) : 0) ? (d->valid = MUGGLE(71)) : 0) ? 0 : done);
 }
 
 
@@ -250,15 +250,15 @@ _nthm_descendants_killed (d, err)
   scope_stack e;
   int done;
 
-  if ((! d) ? IER(198) : (d->valid != MAGIC) ? IER(199) : ! blockers_killed (d, err))
+  if ((! d) ? IER(199) : (d->valid != MAGIC) ? IER(200) : ! blockers_killed (d, err))
 	 return 0;
-  if ((pthread_mutex_lock (&(d->lock)) ? IER(200) : 0) ? (d->valid = MUGGLE(72)) : 0)
+  if ((pthread_mutex_lock (&(d->lock)) ? IER(201) : 0) ? (d->valid = MUGGLE(72)) : 0)
 	 return 0;
-  if (!(((e = d->scope) ? 0 : IER(201)) ? (d->valid = MUGGLE(73)) : (done = 0)))
+  if (!(((e = d->scope) ? 0 : IER(202)) ? (d->valid = MUGGLE(73)) : (done = 0)))
 	 while (! (done = ! (finisher = _nthm_dequeued (e->finishers, &(e->finisher_queue), err))))
-		if (finisher->pool ? IER(202) : ! _nthm_retired (finisher, err))
+		if (finisher->pool ? IER(203) : ! _nthm_retired (finisher, err))
 		  break;
-  return ((pthread_mutex_unlock (&(d->lock)) ? IER(203) : 0) ? (!(d->valid = MUGGLE(74))) : done);
+  return ((pthread_mutex_unlock (&(d->lock)) ? IER(204) : 0) ? (!(d->valid = MUGGLE(74))) : done);
 }
 
 
@@ -277,7 +277,7 @@ _nthm_acknowledged (s, err)
 	  // Retire an untethered unpooled pipe taking note of its error
 	  // status.
 {
-  if ((! s) ? IER(204) : (s->valid != MAGIC) ? IER(205) : 0)
+  if ((! s) ? IER(205) : (s->valid != MAGIC) ? IER(206) : 0)
 	 return 0;
   *err = (*err ? *err : s->status);
   return (_nthm_descendants_killed (s, err) ? _nthm_retired (s, err) : 0);
