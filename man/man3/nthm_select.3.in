@@ -48,8 +48,8 @@ and
 are an efficient way to run a pool of worker threads
 without unnecessary blocking because
 .BR nthm_select
-never blocks unless there is no choice because
-all threads in the current scope are busy.
+never blocks unless there is no alternative due to
+all threads in the current scope being busy.
 .P
 Applications can check whether a call to
 .BR nthm_select

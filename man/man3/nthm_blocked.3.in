@@ -25,55 +25,56 @@ nthm_blocked \- test whether all open pipes are busy
 .SH DESCRIPTION
 The
 .BR nthm_blocked
-function can test whether
+function tests whether or not
 .BR nthm_select
-would block because there are pipes with threads tethered in
-current scope that are still running but none ready to be read.
+would block if it were called.
+This capability may be useful for polling the
+availability of readable pipes.
 .SH RETURN VALUE
-A non-zero return value means a call to
+If there are pipes with threads tethered in the
+current scope that are still running but none ready are to be read,
+then a successful call to
+.BR nthm_blocked
+returns a non-zero value because
 .BR nthm_select
-would have blocked at the time
+would have blocked if it were called.
+Otherwise,
 .BR nthm_blocked
-was called.
-.P
-A zero return value from a successful call to
-.BR nthm_blocked
-means
+returns a zero value either because the call was unsuccessful or
+because
 .BR nthm_select
-would have returned immediately to the caller without blocking.
-.P
-An unsuccessful call to
-.BR nthm_blocked
-always returns a zero value.
-Return values of zero can be disambiguated by the value of
-.I *err.
+would have returned immediately without blocking.
 .SH ERRORS
-Error codes are reported in
+The value of
 .I *err
-with any non-zero value indicating an error.
-.TP
-*
-If
-.I *err
-is non-zero on entry, then it is left unchanged whether or not
+is set to non-zero if it is zero on entry and
 .BR nthm_blocked
-succeeds.
-.TP
-*
-If
-.I *err
-is zero on entry and exit, then
-.BR nthm_blocked
-has succeeded.
-.TP
-*
-If
-.I *err
-is zero on entry and non-zero on exit, then
-.BR nthm_blocked
-has detected a failure of some internal consistency check indicative
-of a bug. The specific code reported may be helpful in bug reports to
-developers.
+is unsuccessful for any reason, but is otherwise left unchanged.
+Errors indicate a failure of some internal consistency check due to
+memory corruption, misuse of the API, or a bug in
+.BR nthm.
+Bug reports including error codes are welcome.
+.SH EXAMPLE
+This example shows an event loop that interleaves 
+reading of previously opened
+.BR nthm
+pipes with other unspecified operations.
+.sp 1
+.NF
+  while (! err)
+    if (nthm_blocked (&err))
+      {
+        // do something other than waiting for pipes
+      }
+    else if (err) // not successful
+      break;
+    else if ((p = nthm_select (&err)) // not blocked
+      {
+        x = nthm_read (p, &err))
+        // do something with data x read from pipe p
+      }
+    else         // all visible pipes have been read
+      break;
 .SH SEE ALSO
 .BR nthm (7),
 .BR nthm_open (3),
