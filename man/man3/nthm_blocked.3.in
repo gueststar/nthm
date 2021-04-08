@@ -32,7 +32,7 @@ This capability may be useful for polling the
 availability of readable pipes.
 .SH RETURN VALUE
 If there are pipes with threads tethered in the
-current scope that are still running but none ready are to be read,
+current scope that are still running but none ready to be read,
 then a successful call to
 .BR nthm_blocked
 returns a non-zero value because
