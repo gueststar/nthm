@@ -50,11 +50,12 @@ static int initial_error = 0;
 
 // to be done when any user code calls a published API routine
 
-#define API_ENTRY_POINT(x)                                                                   \
-  err = (err ? err : &ignored_error);                                                         \
+#define API_ENTRY_POINT(x)                                                                  \
+  if (err ? NULL : (err = &ignored_error))                                                   \
+    ignored_error = 0;                                                                        \
   pthread_once (&once_control, initialization);                                                \
   if (initialized ? 0 : (*err = (*err ? *err : initial_error ? initial_error : THE_IER(23))))   \
-	 return x;
+    return x
 
 
 // --------------- initialization and teardown -------------------------------------------------------------
