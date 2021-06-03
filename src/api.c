@@ -198,10 +198,10 @@ nthm_send (mutator, operand, err)
   if (!(spec = _nthm_thread_spec_of (_nthm_new_pipe (err), NO_OPERATOR, mutator, operand, WRITE_ONLY, err)))
 	 return 0;
   if ((e = pthread_create (&c, &thread_attribute, &_nthm_manager, spec)) ? 0 : _nthm_started (err))
-	 return 0;
+	 return 1;
   *err = (*err ? *err : (e == ENOMEM) ? e : (e == EAGAIN) ? e : THE_IER(34));
   _nthm_unspecify (spec, err);
-  return 1;
+  return 0;
 }
 
 
