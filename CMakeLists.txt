@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 
 project(
-  nthm VERSION 0.9.0
+  nthm VERSION 0.9.1
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -183,7 +183,7 @@ configure_file (test/testconfig.h.in test/testconfig.h)
 find_program(VALGRIND valgrind)
 
 if (VALGRIND)
-  set (MEMCHECK_COMMAND ${VALGRIND} --leak-check=full --show-leak-kinds=all --soname-synonyms=somalloc=NONE)
+  set (MEMCHECK_COMMAND ${VALGRIND} --leak-check=full --show-leak-kinds=all)
   set (DRDCHECK_COMMAND ${VALGRIND} --tool=drd)
   message (STATUS "found valgrind; memory and thread safety tests enabled")
 else ()
@@ -205,7 +205,7 @@ function(testme testname)
   endif ()
   if (VALGRIND)
 	 add_test (NAME ${testname}_mem COMMAND ${MEMCHECK_COMMAND} ${CMAKE_CURRENT_BINARY_DIR}/${testname})
-	 set_tests_properties(${testname}_mem PROPERTIES PASS_REGULAR_EXPRESSION "no leaks")
+	 set_tests_properties(${testname}_mem PROPERTIES PASS_REGULAR_EXPRESSION "definitely lost: 0|no leaks are possible")
 	 add_test (NAME ${testname}_drd COMMAND ${DRDCHECK_COMMAND} ${CMAKE_CURRENT_BINARY_DIR}/${testname})
 	 set_tests_properties(${testname}_drd PROPERTIES FAIL_REGULAR_EXPRESSION "Acquired")
   endif ()
