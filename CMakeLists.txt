@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.13.4)
 # set(CMAKE_C_COMPILER gcc)
 
 project(
-  nthm VERSION 0.9.2
+  nthm VERSION 0.9.3
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -22,7 +22,7 @@ include(GNUInstallDirs)
 # error. -Wstrict-prototypes is omitted to allow old style function
 # prototypes. -Wconditional-uninitialized is omitted because of too
 # many false positives. -Werror=cast-function-type, -Wextra, and
-# -Wbad-function-cast are omitted because they break compatability of
+# -Wbad-function-cast are omitted because they break compatibility of
 # void pointers with uintptr_t in function type casts.
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL Clang)
