@@ -20,7 +20,7 @@ echo (x, err)
 	  // of x likely to finish first so that passing the test by chance
 	  // is less likely.
 {
-  usleep (x * DELAY);
+  usleep ((unsigned) x * DELAY);
   return x;
 }
 

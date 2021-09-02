@@ -82,6 +82,7 @@ eradicate (err)
   void *leak;
   int k;
 
+  p = NULL;
   while (! *err)
 	 {
 		if (pthread_mutex_lock (&root_lock) ? IER(209) : 0)
@@ -104,7 +105,8 @@ eradicate (err)
 				return;
 			 if (k ? 0 : _nthm_pooled (p, err) ? 1 : IER(217))
 				continue;
-			 leak = _nthm_untethered_read (p, err);
+			 if ((leak = _nthm_untethered_read (p, err)))
+				IER(218);
 		  }
 	 }
 }
@@ -126,7 +128,7 @@ _nthm_close_pool ()
   err = 0;
   eradicate (&err);
   _nthm_globally_throw (err);
-  _nthm_globally_throw (pthread_mutex_destroy (&root_lock) ? THE_IER(218) : 0);
+  _nthm_globally_throw (pthread_mutex_destroy (&root_lock) ? THE_IER(219) : 0);
 }
 
 
@@ -170,21 +172,22 @@ _nthm_placed (d, err)
 {
   int done;
 
-  if ((! d) ? IER(219) : (d->valid != MAGIC) ? IER(220) : 0)
+  done = 0;
+  if ((! d) ? IER(220) : (d->valid != MAGIC) ? IER(221) : 0)
 	 return 0;
-  if (pthread_mutex_lock (&root_lock) ? IER(221) : (done = 0))
+  if (pthread_mutex_lock (&root_lock) ? IER(222) : (done = 0))
 	 return 0;
-  if ((pthread_mutex_lock (&(d->lock)) ? IER(222) : 0) ? (d->valid = MUGGLE(77)) : 0)
+  if ((pthread_mutex_lock (&(d->lock)) ? IER(223) : 0) ? (d->valid = MUGGLE(77)) : 0)
 	 goto a;
   if (d->pool ? (done = 1) : ! (d->pool = _nthm_pipe_list_of (d, err)))
 	 goto b;
-  if (done = _nthm_pushed (d->pool, &root_pipes, err))
+  if ((done = _nthm_pushed (d->pool, &root_pipes, err)))
 	 goto b;
   if (_nthm_freed (d->pool, err) ? (! ! (d->pool = NULL)) : 1)
-	 IER(223);
- b: if (pthread_mutex_unlock (&(d->lock)) ? IER(224) : 0)
+	 IER(224);
+ b: if (pthread_mutex_unlock (&(d->lock)) ? IER(225) : 0)
 	 d->valid = MUGGLE(78);
- a: return ((pthread_mutex_unlock (&root_lock) ? IER(225) : 0) ? 0 : done);
+ a: return ((pthread_mutex_unlock (&root_lock) ? IER(226) : 0) ? 0 : done);
 }
 
 
@@ -202,18 +205,18 @@ _nthm_displace (p, err)
 
 	  // Take a pipe out of the root pool unconditionally.
 {
-  if ((! p) ? IER(226) : (p->valid != MAGIC) ? IER(227) : 0)
+  if ((! p) ? IER(227) : (p->valid != MAGIC) ? IER(228) : 0)
 	 return;
-  if (pthread_mutex_lock (&root_lock) ? IER(228) : 0)
+  if (pthread_mutex_lock (&root_lock) ? IER(229) : 0)
 	 return;
-  if ((pthread_mutex_lock (&(p->lock)) ? IER(229) : 0) ? (p->valid = MUGGLE(79)) : 0)
+  if ((pthread_mutex_lock (&(p->lock)) ? IER(230) : 0) ? (p->valid = MUGGLE(79)) : 0)
 	 goto a;
   if (p->pool ? _nthm_unilaterally_delisted (p->pool, err) : 0)
 	 p->pool = NULL;
-  if (pthread_mutex_unlock (&(p->lock)) ? IER(230) : 0)
+  if (pthread_mutex_unlock (&(p->lock)) ? IER(231) : 0)
 	 p->valid = MUGGLE(80);
   a: if (pthread_mutex_unlock (&root_lock))
-	 IER(231);
+	 IER(232);
 }
 
 
@@ -233,10 +236,10 @@ _nthm_unpool (p, err)
 {
   int c;   // non-zero if the pipe is a placeholder for the current context
 
-  if ((! p) ? IER(232) : (p->valid != MAGIC) ? IER(233) : ! _nthm_retirable (p, err))
+  if ((! p) ? IER(233) : (p->valid != MAGIC) ? IER(234) : ! _nthm_retirable (p, err))
 	 return;
-  c = (p->placeholder ? (_nthm_current_context (err) == p) : 0);
+  c = (p->placeholder ? (_nthm_current_context () == p) : 0);
   _nthm_displace (p, err);
-  if (_nthm_retired (p, err) ? c : ! IER(234))
+  if (_nthm_retired (p, err) ? c : ! IER(235))
 	 _nthm_clear_context (err);
 }

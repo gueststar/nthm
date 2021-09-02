@@ -58,6 +58,6 @@ _nthm_vacate_scopes (nthm_pipe s, int *err);
 
 // report memory leaks
 extern void
-_nthm_close_scopes ();
+_nthm_close_scopes (void);
 
 #endif

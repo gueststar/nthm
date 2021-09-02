@@ -191,7 +191,7 @@ nthm_send (mutator, operand, err)
   API_ENTRY_POINT(0);
   if (*deadlocked ? IER(31) : 0)
 	 return 0;
-  if ((!(d = _nthm_current_context (err))) ? 0 : (d->valid != MAGIC) ? IER(32) : d->yielded ? IER(33) : 0)
+  if ((!(d = _nthm_current_context ())) ? 0 : (d->valid != MAGIC) ? IER(32) : d->yielded ? IER(33) : 0)
 	 return 0;
   if ((! d) ? 0 : _nthm_heritably_killed_or_yielded (d, err) ? (*err = (*err ? *err : NTHM_KILLED)) : 0)
 	 return 0;
@@ -309,13 +309,14 @@ nthm_select (err)
   int k;
 
   API_ENTRY_POINT(NULL);
+  s = NULL;
   if (*deadlocked ? IER(42) : (!(d = _nthm_current_context ())) ? 1 : (d->valid == MAGIC) ? 0 : IER(43))
 	 return NULL;
   if ((pthread_mutex_lock (&(d->lock)) ? IER(44) : 0) ? (d->valid = MUGGLE(6)) : (k = 0))
 	 return NULL;
   if (((e = d->scope) ? 0 : IER(45)) ? (d->valid = MUGGLE(7)) : 0)
 	 goto a;
-  for (s = NULL; (k = d->killed) ? 0 : (s = _nthm_dequeued (e->finishers, &(e->finisher_queue), err)) ? 0 : ! ! (e->blockers);)
+  for (; (k = d->killed) ? 0 : (s = _nthm_dequeued (e->finishers, &(e->finisher_queue), err)) ? 0 : ! ! (e->blockers);)
 	 if ((pthread_cond_wait (&(d->progress), &(d->lock)) ? IER(46) : 0) ? (d->valid = MUGGLE(8)) : 0)
 		break;
  a: if ((pthread_mutex_unlock (&(d->lock)) ? IER(47) : 0) ? (d->valid = MUGGLE(9)) : 0)
@@ -413,7 +414,7 @@ nthm_truncated (err)
   if ((pthread_mutex_lock (&(source->lock)) ? IER(56) : 0) ? (source->valid = MUGGLE(16)) : 0)
 	 return 0;
   if ((source->scope ? 0 : IER(57)) ? (source->valid = MUGGLE(17)) : 0)
-	 return ((pthread_mutex_unlock (&(source->lock)) ? IER(58) : 0) ? (!(source->valid = MUGGLE(18))) : 0);
+	 return ((pthread_mutex_unlock (&(source->lock)) ? IER(58) : 0) ? ((unsigned) !(source->valid = MUGGLE(18))) : 0);
   t = source->scope->truncation;
   if ((pthread_mutex_unlock (&(source->lock)) ? IER(59) : 0) ? (source->valid = MUGGLE(19)) : 0)
 	 return 0;
@@ -593,7 +594,6 @@ nthm_exit_scope (err)
 {
   scope_stack e;
   nthm_pipe p;
-  pipe_list c;
 
   API_ENTRY_POINT();
   if ((p = _nthm_current_context ()) ? 0 : (*err = (*err ? *err : NTHM_UNDFLO)))

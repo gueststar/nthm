@@ -141,6 +141,7 @@ _nthm_current_or_new_context (err)
 	 goto a;
   if (_nthm_set_context (drain, err))
 	 return drain;
-  a: if (_nthm_retired (drain, err) ? 1 : IER(77))
-	 return NULL;
+ a: if (! _nthm_retired (drain, err))
+	 IER(77);
+  return NULL;
 }

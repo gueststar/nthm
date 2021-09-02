@@ -44,4 +44,4 @@ _nthm_open_pool (int *err);
 
 // free the root pipes and other static storage
 extern void
-_nthm_close_pool ();
+_nthm_close_pool (void);

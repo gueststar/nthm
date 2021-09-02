@@ -1,7 +1,13 @@
 cmake_minimum_required(VERSION 3.13.4)
 
+# Builds have been tested with clang and gcc. Uncomment at most
+# one. If neither is chosen, the system default is used.
+
+# set(CMAKE_C_COMPILER clang)
+# set(CMAKE_C_COMPILER gcc)
+
 project(
-  nthm VERSION 0.9.1
+  nthm VERSION 0.9.2
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -9,6 +15,42 @@ project(
 set (MAINTAINER_EMAIL milonga@delayinsensitive.com)
 
 include(GNUInstallDirs)
+
+# See https://airbus-seclab.github.io/c-compiler-security/ for
+# explanations of these options and further verifications worth
+# trying. -fsanitize=safe-stack is omitted because it caused a linker
+# error. -Wstrict-prototypes is omitted to allow old style function
+# prototypes. -Wconditional-uninitialized is omitted because of too
+# many false positives. -Werror=cast-function-type, -Wextra, and
+# -Wbad-function-cast are omitted because they break compatability of
+# void pointers with uintptr_t in function type casts.
+
+if (${CMAKE_C_COMPILER_ID} STREQUAL Clang)
+  add_compile_options(-O2 -Werror -Walloca -Wcast-qual -Wconversion
+	 -Wformat=2 -Wformat-security -Wnull-dereference -Wstack-protector
+	 -Wstrict-overflow=3 -Wvla -Warray-bounds
+	 -Warray-bounds-pointer-arithmetic -Wassign-enum -Wconversion
+	 -Wfloat-equal -Wformat-type-confusion -Widiomatic-parentheses
+	 -Wimplicit-fallthrough -Wloop-analysis -Wpointer-arith
+	 -Wshift-sign-overflow -Wshorten-64-to-32 -Wswitch-enum
+	 -Wtautological-constant-in-range-compare -Wunreachable-code-aggressive
+	 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fPIC
+	 -fstack-clash-protection)
+elseif (${CMAKE_C_COMPILER_ID} STREQUAL GNU)
+   add_compile_options(-O2 -Werror -Wall -Wpedantic -Wformat=2
+ 	 -Wformat-overflow=2 -Wformat-truncation=2 -Wformat-security
+ 	 -Wnull-dereference -Wstack-protector -Wtrampolines -Walloca -Wvla
+ 	 -Warray-bounds=2 -Wimplicit-fallthrough=3 -Wtraditional-conversion
+ 	 -Wshift-overflow=2 -Wcast-qual -Wstringop-overflow=4 -Wconversion
+ 	 -Warith-conversion -Wlogical-op -Wduplicated-cond
+ 	 -Wduplicated-branches -Wformat-signedness -Wshadow
+ 	 -Wstrict-overflow=4 -Wundef -Wswitch-default
+ 	 -Wswitch-enum -Wstack-usage=1000000 -Wcast-align=strict
+ 	 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fstack-clash-protection
+ 	 -fPIC -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code)
+else()
+   message (STATUS "unknown C compiler ${CMAKE_C_COMPILER_ID}; build errors possible")
+endif()
 
 # ------------- markdown documents -----------
 

@@ -50,20 +50,20 @@ _nthm_untethered_read (s, err)
   void *result;
 
   result = NULL;
-  if ((! s) ? IER(235) : (s->valid != MAGIC) ? IER(236) : 0)
+  if ((! s) ? IER(236) : (s->valid != MAGIC) ? IER(237) : 0)
 	 return NULL;
-  if ((pthread_mutex_lock (&(s->lock)) ? IER(237) : 0) ? (s->valid = MUGGLE(81)) : 0)
+  if ((pthread_mutex_lock (&(s->lock)) ? IER(238) : 0) ? (s->valid = MUGGLE(81)) : 0)
 	 return NULL;
   if (s->reader ? (*err = (*err ? *err : NTHM_NOTDRN)) : 0)
 	 goto a;
-  if (s->yielded ? 0 : (pthread_cond_wait (&(s->termination), &(s->lock)) ? IER(238) : 0) ? (s->valid = MUGGLE(82)) : 0)
+  if (s->yielded ? 0 : (pthread_cond_wait (&(s->termination), &(s->lock)) ? IER(239) : 0) ? (s->valid = MUGGLE(82)) : 0)
 	 goto a;
   result = s->result;
   if (*err ? 0 : s->status ? (*err = s->status) : 0)
 	 s->status = 0;
  a: if (s->yielded ? 0 : (s->yielded = 1))
-	 IER(239);
-  if (pthread_mutex_unlock (&(s->lock)) ? IER(240) : 0)
+	 IER(240);
+  if (pthread_mutex_unlock (&(s->lock)) ? IER(241) : 0)
 	 s->valid = MUGGLE(83);
   return (_nthm_killable (s, err) ? result : NULL);
 }
@@ -89,24 +89,23 @@ _nthm_tethered_read (s, err)
 {
   nthm_pipe d;
   void *result;
-  int status;
   int done;
 
-  if ((! s) ? IER(241) : (s->valid != MAGIC) ? IER(242) : s->reader ? 0 : IER(243))
+  if ((! s) ? IER(242) : (s->valid != MAGIC) ? IER(243) : s->reader ? 0 : IER(244))
 	 return NULL;
   if (_nthm_drained_by (s, d = _nthm_current_context (), err) ? 0 : (*err = (*err ? *err : NTHM_NOTDRN)))
 	 return NULL;
-  if (((! d) ? IER(244) : (d->valid != MAGIC) ? IER(245) : 0) ? (s->valid = MUGGLE(84)) : 0)
+  if (((! d) ? IER(245) : (d->valid != MAGIC) ? IER(246) : 0) ? (s->valid = MUGGLE(84)) : 0)
 	 return NULL;
-  if ((pthread_mutex_lock (&(d->lock)) ? IER(246) : 0) ? (d->valid = MUGGLE(85)) : 0)
+  if ((pthread_mutex_lock (&(d->lock)) ? IER(247) : 0) ? (d->valid = MUGGLE(85)) : 0)
 	 return NULL;
   while (! (done = (s->yielded ? 1 : d->killed)))
-	 if (pthread_cond_wait (&(d->progress), &(d->lock)) ? IER(247) : 0)
+	 if (pthread_cond_wait (&(d->progress), &(d->lock)) ? IER(248) : 0)
 		goto a;
   if (*err ? 0 : s->status ? (*err = s->status) : 0)
 	 s->status = 0;
   result = (s->yielded ? s->result : NULL);
- a: if (pthread_mutex_unlock (&(d->lock)) ? IER(248) : 0)
+ a: if (pthread_mutex_unlock (&(d->lock)) ? IER(249) : 0)
 	 d->valid = MUGGLE(86);
   return ((done ? _nthm_killable (s, err) : 0) ? result : NULL);
 }
@@ -136,14 +135,14 @@ untethered_yield (s, err)
 	  // function and is unlocked on exit. If the thread is already
 	  // killed at this point the pipe will be retired when pooled.
 {
-  if ((! s) ? IER(249) : (s->valid != MAGIC) ? IER(250) : 0)
+  if ((! s) ? IER(250) : (s->valid != MAGIC) ? IER(251) : 0)
 	 return;
   s->yielded = 1;
-  if (pthread_cond_signal (&(s->termination)) ? IER(251) : 0)
+  if (pthread_cond_signal (&(s->termination)) ? IER(252) : 0)
 	 s->valid = MUGGLE(87);
   else if (s->killed ? 0 : s->status ? 0 : (s->status = *err))
 	 *err = 0;
-  if (pthread_mutex_unlock (&(s->lock)) ? IER(252) : 0)
+  if (pthread_mutex_unlock (&(s->lock)) ? IER(253) : 0)
 	 s->valid = MUGGLE(88);
 }
 
@@ -169,31 +168,31 @@ tethered_yield (s, err)
   nthm_pipe d;    // drain
   uintptr_t l;    // scope level
 
-  if ((! s) ? IER(253) : (s->valid != MAGIC) ? IER(254) : s->killed ? IER(255) : 0)
+  if ((! s) ? IER(254) : (s->valid != MAGIC) ? IER(255) : s->killed ? IER(256) : 0)
 	 return;
-  if ((!(s->reader)) ? IER(256) : (!(d = s->reader->pipe)) ? IER(257) : (d->valid != MAGIC) ? IER(258) : 0)
+  if ((!(s->reader)) ? IER(257) : (!(d = s->reader->pipe)) ? IER(258) : (d->valid != MAGIC) ? IER(259) : 0)
 	 goto a;
-  if ((pthread_mutex_lock (&(d->lock)) ? IER(259) : 0) ? (d->valid = MUGGLE(89)) : 0)
+  if ((pthread_mutex_lock (&(d->lock)) ? IER(260) : 0) ? (d->valid = MUGGLE(89)) : 0)
 	 goto a;
-  if (((e = d->scope) ? 0 : IER(260)) ? (d->valid = MUGGLE(90)) : 0)
+  if (((e = d->scope) ? 0 : IER(261)) ? (d->valid = MUGGLE(90)) : 0)
 	 goto b;
-  if ((((l = _nthm_scope_level (d, err)) < s->depth) ? IER(261) : 0) ? (s->valid = MUGGLE(91)) : 0)
+  if ((((l = _nthm_scope_level (d, err)) < s->depth) ? IER(262) : 0) ? (s->valid = MUGGLE(91)) : 0)
 	 goto b;
   for (l = l - s->depth; l; l--)
-	 if (((e = e->enclosure) ? 0 : IER(262)) ? (d->valid = MUGGLE(92)) : 0)
+	 if (((e = e->enclosure) ? 0 : IER(263)) ? (d->valid = MUGGLE(92)) : 0)
 		goto b;
   if (! _nthm_severed (b = s->reader->complement, err))                                 // remove s from d's blockers
 	 goto b;
   s->yielded = _nthm_enqueued (b, &(e->finishers), &(e->finisher_queue), err);          // install s in d's finishers
-  if ((s->yielded ? 0 : _nthm_freed (b, err) ? 1 : IER(263)) ? (s->yielded = 1) : 0)
+  if ((s->yielded ? 0 : _nthm_freed (b, err) ? 1 : IER(264)) ? (s->yielded = 1) : 0)
 	 s->valid = MUGGLE(93);
-  if (pthread_cond_signal (&(d->progress)) ? IER(264) : 0)
+  if (pthread_cond_signal (&(d->progress)) ? IER(265) : 0)
 	 d->valid = MUGGLE(94);
   if (s->status ? 0 : (s->status = *err))
 	 *err = 0;
- b: if (pthread_mutex_unlock (&(d->lock)) ? IER(265) : 0)
+ b: if (pthread_mutex_unlock (&(d->lock)) ? IER(266) : 0)
 	 d->valid = MUGGLE(95);
- a: if (pthread_mutex_unlock (&(s->lock)) ? IER(266) : 0)
+ a: if (pthread_mutex_unlock (&(s->lock)) ? IER(267) : 0)
 	 s->valid = MUGGLE(96);
 }
 
@@ -214,9 +213,9 @@ yield (source, err)
 	  // protocol. The source has to be flushed before being allowed
 	  // into its reader's finishers queue.
 {
-  if ((! _nthm_descendants_killed (source, err)) ? 1 : (! source) ? IER(267) : (source->valid != MAGIC) ? IER(268) : 0)
+  if ((! _nthm_descendants_killed (source, err)) ? 1 : (! source) ? IER(268) : (source->valid != MAGIC) ? IER(269) : 0)
 	 return;
-  if ((pthread_mutex_lock (&(source->lock)) ? IER(269) : 0) ? (source->valid = MUGGLE(97)) : 0)
+  if ((pthread_mutex_lock (&(source->lock)) ? IER(270) : 0) ? (source->valid = MUGGLE(97)) : 0)
 	 return;
   if (source->killed ? 1 : !(source->reader))
 	 untethered_yield (source, err);
@@ -244,9 +243,9 @@ _nthm_manager (void_pointer)
   int err;
 
   err = 0;
-  if ((t = (thread_spec) void_pointer) ? 0 : (deadlocked = err = THE_IER(270)))
+  if ((t = (thread_spec) void_pointer) ? 0 : (deadlocked = err = THE_IER(271)))
 	 goto a;
-  if (((!(s = t->pipe)) ? 1 : (s->valid != MAGIC) ? 1 : ! _nthm_set_context (s, &err)) ? (deadlocked = err = THE_IER(271)) : 0)
+  if (((!(s = t->pipe)) ? 1 : (s->valid != MAGIC) ? 1 : ! _nthm_set_context (s, &err)) ? (deadlocked = err = THE_IER(272)) : 0)
 	 goto b;
   if (_nthm_registered (&err) ? 0 : (deadlocked = 1))
 	 goto c;

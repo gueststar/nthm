@@ -83,7 +83,7 @@ _nthm_close_pipl ()
   pthread_once (&once_control, lazy_initialization);
   _nthm_globally_throw (pthread_mutex_destroy (&memtest_lock) ? THE_IER(125) : 0);
   if (pipe_lists)
-	 fprintf (stderr, "%ld unreclaimed pipe list%s\n", pipe_lists, pipe_lists == 1 ? "" : "s");
+	 fprintf (stderr, "%lu unreclaimed pipe list%s\n", pipe_lists, pipe_lists == 1 ? "" : "s");
 #endif
 }
 
@@ -108,6 +108,7 @@ _nthm_pipe_list_of (p, err)
 #ifdef MEMTEST
   pthread_once (&once_control, lazy_initialization);
 #endif
+  t = NULL;
   if ((p ? 0 : IER(126)) ? 1 : (t = (pipe_list) malloc (sizeof (*t))) ? 0 : (*err = (*err ? *err : ENOMEM)))
 	 return NULL;
 #ifdef MEMTEST
@@ -352,6 +353,7 @@ _nthm_bilaterally_dequeued (r, f, q, err)
   nthm_pipe p;
   pipe_list c;
 
+  c = NULL;
   if ((! q) ? IER(149) : (! r) ? IER(150) : (c = r->complement) ? 0 : IER(151))
 	 return NULL;
   if (c == f)

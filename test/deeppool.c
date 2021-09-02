@@ -68,7 +68,7 @@ main(argc, argv)
 {
   int err;
   interval x;
-  uintptr_t s;
+  unsigned s;
 
   err = 0;
   GETRANDOM(s);
@@ -86,6 +86,6 @@ main(argc, argv)
 			 exit(EXIT_SUCCESS);
 		  }
 	 }
-  printf (err ? "deeppool failed with seed 0x%lx\n%s\n" : "deeppool failed with seed 0x%lx\n", s, nthm_strerror(err));
+  printf (err ? "deeppool failed with seed 0x%x\n%s\n" : "deeppool failed with seed 0x%x\n", s, nthm_strerror(err));
   exit (EXIT_FAILURE);
 }

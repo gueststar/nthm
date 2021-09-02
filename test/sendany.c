@@ -30,6 +30,7 @@ main(argc, argv)
   int err;
 
   err = 0;
+  x = NULL;
   nthm_send ((nthm_slacker) &slacker, x, &err);
   printf (err ? "sendany failed\n%s\n" : "sendany detected no errors\n", nthm_strerror(err));
   exit (err ? EXIT_FAILURE : EXIT_SUCCESS);

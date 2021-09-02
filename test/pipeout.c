@@ -34,6 +34,7 @@ main(argc, argv)
 
   err = 0;
   result = 0;
+  x = 0;
   if ((source = nthm_open ((nthm_worker) &pingback, (void *) x, &err)))
 	 result = (uintptr_t) nthm_read (source, &err);
   if (err ? 0 : (result == EXPECTED_RESULT))

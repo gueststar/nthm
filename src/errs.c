@@ -106,6 +106,7 @@ _nthm_close_errs ()
   int last_error;
   unsigned i;
 
+  last_error = 0;
   if (deadlocked ? 0 : (last_error = (pthread_mutex_destroy (&error_lock) ? THE_IER(83) : 0)) ? (error_count + 1) : 0)
 	 {
 		if (error_count < ERROR_LIMIT)
@@ -116,7 +117,7 @@ _nthm_close_errs ()
 	 fprintf (stderr, "%s\n", nthm_strerror (global_error[i]));
   if (i == error_count)
 	 return;
-  fprintf (stderr, "nthm: %d further error%s ", error_count - i, (error_count - i > 1) ? "s" : "");
+  fprintf (stderr, "nthm: %u further error%s ", error_count - i, (error_count - i > 1) ? "s" : "");
   fprintf (stderr, "w%s detected\n", (error_count - i > 1) ? "ere" : "as");
 }
 

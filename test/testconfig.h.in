@@ -21,7 +21,7 @@
 #include <sys/random.h>
 #define GETRANDOM(seed) getrandom(&seed, sizeof (seed), 0)
 #else
-#define GETRANDOM(seed) seed = (uintptr_t) &main
+#define GETRANDOM(seed) seed = (unsigned) (uintptr_t) &main
 #endif
 
 typedef struct interval_struct *interval;

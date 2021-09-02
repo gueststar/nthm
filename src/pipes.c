@@ -82,7 +82,7 @@ _nthm_close_pipes ()
 #ifdef MEMTEST
   _nthm_globally_throw (pthread_mutex_destroy (&memtest_lock) ? THE_IER(86) : 0);
   if (pipes)
-	 fprintf (stderr, "%ld unreclaimed pipe%s\n", pipes, pipes == 1 ? "" : "s");
+	 fprintf (stderr, "%lu unreclaimed pipe%s\n", pipes, pipes == 1 ? "" : "s");
 #endif
 }
 
@@ -154,6 +154,7 @@ _nthm_retired (p, err)
 {
   scope_stack e;
 
+  e = NULL;
   if ((! p) ? IER(88) : (p->valid != MAGIC) ? IER(89) : ((e = p->scope) ? 0 : IER(90)) ? (p->valid = MUGGLE(23)) : 0)
 	 return 0;
   if (e->enclosure ? IER(91) : ! _nthm_scope_exited (p, err))
@@ -249,7 +250,7 @@ _nthm_heritably_truncated (source, err)
 	 return 0;
   if ((pthread_mutex_lock (&(source->lock)) ? IER(107) : 0) ? (source->valid = MUGGLE(34)) : 0)
 	 return 0;
-  if (!(h = (source->yielded ? 1 : source->killed)))
+  if (!(h = (unsigned) (source->yielded ? 1 : source->killed)))
 	 for (; source->reader; source = drain)
 		{
 		  if ((!(drain = source->reader->pipe)) ? IER(108) : (drain->valid != MAGIC) ? IER(109) : 0)
@@ -266,12 +267,12 @@ _nthm_heritably_truncated (source, err)
 		  if ((h = e->truncation))
 			 goto a;
 		  if ((pthread_mutex_unlock (&(source->lock)) ? IER(114) : 0) ? (source->valid = MUGGLE(39)) : 0)
-			 return ((pthread_mutex_unlock (&(drain->lock)) ? IER(115) : 0) ? (!(drain->valid = MUGGLE(40))) : 0);
+			 return ((pthread_mutex_unlock (&(drain->lock)) ? IER(115) : 0) ? ((unsigned) !(drain->valid = MUGGLE(40))) : 0);
 		  continue;
 		a: if ((pthread_mutex_unlock (&(drain->lock)) ? IER(116) : 0) ? (drain->valid = MUGGLE(41)) : 1)
 			 break;
 		}
-  return ((pthread_mutex_unlock (&(source->lock)) ? IER(117) : 0) ? (! (source->valid = MUGGLE(42))) : h);
+  return ((pthread_mutex_unlock (&(source->lock)) ? IER(117) : 0) ? ((unsigned) ! (source->valid = MUGGLE(42))) : h);
 }
 
 
@@ -296,6 +297,7 @@ _nthm_retirable (p, err)
   scope_stack e;
   int q;
 
+  q = 0;
   if ((! p) ? IER(118) : (p->valid != MAGIC) ? IER(119) : 0)
 	 return 0;
   if ((pthread_mutex_lock (&(p->lock)) ? IER(120) : 0) ? (p->valid = MUGGLE(43)) : 0)

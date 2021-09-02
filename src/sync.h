@@ -76,4 +76,4 @@ _nthm_synchronize (int *err);
 
 // wait for the last thread to finish and report errors on stderr
 extern void
-_nthm_close_sync ();
+_nthm_close_sync (void);

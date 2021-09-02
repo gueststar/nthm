@@ -35,4 +35,4 @@ _nthm_manager (void *void_pointer);
 
 // return the address of a location used for reporting unrecoverable pthread errors
 extern int *
-_nthm_deadlocked ();
+_nthm_deadlocked (void);

@@ -79,4 +79,4 @@ _nthm_bilaterally_freed (pipe_list r, pipe_list b, int *err);
 
 // write errors to stderr
 extern void
-_nthm_close_pipl ();
+_nthm_close_pipl (void);

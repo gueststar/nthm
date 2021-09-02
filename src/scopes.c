@@ -61,9 +61,9 @@ lazy_initialization ()
   err = 0;
   if (! _nthm_error_checking_mutex_type (&a, &err))
 	 goto a;
-  if (pthread_mutex_init (&memtest_lock, &a) ? (err = THE_IER(272)) : 0)
+  if (pthread_mutex_init (&memtest_lock, &a) ? (err = THE_IER(273)) : 0)
 	 goto b;
-  if (pthread_mutexattr_destroy (&a) ? (!(err = THE_IER(273))) : 1)
+  if (pthread_mutexattr_destroy (&a) ? (!(err = THE_IER(274))) : 1)
 	 return;
   pthread_mutex_destroy (&memtest_lock);
   goto a;
@@ -86,9 +86,9 @@ _nthm_close_scopes ()
 {
 #ifdef MEMTEST
   pthread_once (&once_control, lazy_initialization);
-  _nthm_globally_throw (pthread_mutex_destroy (&memtest_lock) ? THE_IER(274) : 0);
+  _nthm_globally_throw (pthread_mutex_destroy (&memtest_lock) ? THE_IER(275) : 0);
   if (scopes)
-	 fprintf (stderr, "%ld unreclaimed scope%s\n", scopes, scopes == 1 ? "" : "s");
+	 fprintf (stderr, "%lu unreclaimed scope%s\n", scopes, scopes == 1 ? "" : "s");
 #endif
 }
 
@@ -121,9 +121,9 @@ _nthm_scope_entered (p, err)
 #endif
   if ((e = (scope_stack) malloc (sizeof (*e))) ? 0 : (*err = (*err ? *err : ENOMEM)))
 	 return 0;
-  if ((! p) ? IER(275) : (p->valid != MAGIC) ? IER(276) : 0)
+  if ((! p) ? IER(276) : (p->valid != MAGIC) ? IER(277) : 0)
 	 goto a;
-  if ((pthread_mutex_lock (&(p->lock)) ? IER(277) : 0) ? (p->valid = MUGGLE(98)) : 0)
+  if ((pthread_mutex_lock (&(p->lock)) ? IER(278) : 0) ? (p->valid = MUGGLE(98)) : 0)
 	 goto a;
   bzero (e, sizeof (*e));
   e->enclosure = p->scope;
@@ -133,7 +133,7 @@ _nthm_scope_entered (p, err)
   scopes++;
   pthread_mutex_unlock (&memtest_lock);
 #endif
-  return ((pthread_mutex_unlock (&(p->lock)) ? IER(278) : 0) ? (!(p->valid = MUGGLE(99))) : 1);
+  return ((pthread_mutex_unlock (&(p->lock)) ? IER(279) : 0) ? (!(p->valid = MUGGLE(99))) : 1);
  a: free (e);
   return 0;
 }
@@ -159,11 +159,12 @@ _nthm_scope_exited (p, err)
 #ifdef MEMTEST
   pthread_once (&once_control, lazy_initialization);
 #endif
-  if ((! p) ? IER(279) : (p->valid != MAGIC) ? IER(280) : ((e = p->scope) ? 0 : IER(281)) ? (p->valid = MUGGLE(100)) : 0)
+  e = NULL;
+  if ((! p) ? IER(280) : (p->valid != MAGIC) ? IER(281) : ((e = p->scope) ? 0 : IER(282)) ? (p->valid = MUGGLE(100)) : 0)
 	 return 0;
-  if ((pthread_mutex_lock (&(p->lock)) ? IER(282) : 0) ? (p->valid = MUGGLE(101)) : 0)
+  if ((pthread_mutex_lock (&(p->lock)) ? IER(283) : 0) ? (p->valid = MUGGLE(101)) : 0)
 	 return 0;
-  if (e->blockers ? IER(283) : e->finishers ? IER(284) : e->finisher_queue ? IER(285) : 0)
+  if (e->blockers ? IER(284) : e->finishers ? IER(285) : e->finisher_queue ? IER(286) : 0)
 	 goto a;
   p->scope = e->enclosure;
   free (e);
@@ -172,7 +173,7 @@ _nthm_scope_exited (p, err)
   scopes--;
   pthread_mutex_unlock (&memtest_lock);
 #endif
- a: return ((pthread_mutex_unlock (&(p->lock)) ? IER(286) : 0) ? (!(p->valid = MUGGLE(102))) : 1);
+ a: return ((pthread_mutex_unlock (&(p->lock)) ? IER(287) : 0) ? (!(p->valid = MUGGLE(102))) : 1);
 }
 
 
@@ -195,7 +196,8 @@ _nthm_scope_level (p, err)
   uintptr_t d;
   scope_stack e;
 
-  if ((! p) ? IER(287) : (p->valid != MAGIC) ? IER(288) : ((e = p->scope) ? 0 : IER(289)) ? (p->valid = MUGGLE(103)) : 0)
+  e = NULL;
+  if ((! p) ? IER(288) : (p->valid != MAGIC) ? IER(289) : ((e = p->scope) ? 0 : IER(290)) ? (p->valid = MUGGLE(103)) : 0)
 	 return 0;
   d = 0;
   for (e = e->enclosure; e; e = e->enclosure)
@@ -218,7 +220,7 @@ _nthm_drained_by (s, d, err)
 
 	  // Return non-zero if d is the drain of s in the drain's current scope.
 {
-  if ((! s) ? IER(290) : (s->valid != MAGIC) ? IER(291) : s->reader ? (s->reader->pipe != d) : 1)
+  if ((! s) ? IER(291) : (s->valid != MAGIC) ? IER(292) : s->reader ? (s->reader->pipe != d) : 1)
 	 return 0;
   return (s->depth == _nthm_scope_level (d, err));
 }
@@ -237,9 +239,9 @@ _nthm_vacate_scopes (s, err)
 
 	  // Exit all enclosed scopes.
 {
-  if ((! s) ? IER(292) : (s->valid != MAGIC) ? IER(293) : 0)
+  if ((! s) ? IER(293) : (s->valid != MAGIC) ? IER(294) : 0)
 	 return;
-  if ((s->scope ? 0 : IER(294)) ? (! (s->valid = MUGGLE(104))) : 0)
+  if ((s->scope ? 0 : IER(295)) ? (! (s->valid = MUGGLE(104))) : 0)
 	 return;
   while (s->scope->enclosure ? (*err = (*err ? *err : NTHM_XSCOPE)) : 0)
 	 if (!(_nthm_descendants_untethered (s, err) ? _nthm_scope_exited (s, err) : 0))

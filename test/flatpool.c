@@ -37,7 +37,8 @@ main(argc, argv)
   int err;
   interval x;
   nthm_pipe source;
-  uintptr_t sum, start, count, cumulative_sum, seed;
+  uintptr_t start, count, cumulative_sum;
+  unsigned seed;
 
   err = 0;
   GETRANDOM (seed);
@@ -66,6 +67,6 @@ main(argc, argv)
 		printf ("flatpool detected no errors\n");
 		exit(EXIT_SUCCESS);
 	 }
-  printf (err ? "flatpool failed with seed 0x%lx\n%s\n" : "flatpool failed with seed 0x%lx\n", seed, nthm_strerror(err));
+  printf (err ? "flatpool failed with seed 0x%x\n%s\n" : "flatpool failed with seed 0x%x\n", seed, nthm_strerror(err));
   exit(EXIT_FAILURE);
 }

@@ -23,7 +23,7 @@
 
 // return a pointer to the pipe node corresponding to the currently running thread, if any
 extern nthm_pipe 
-_nthm_current_context ();
+_nthm_current_context (void);
 
 // identify a pipe with the current thread context
 extern int
@@ -43,4 +43,4 @@ _nthm_open_context (int *err);
 
 // free the thread specific storage key
 extern void
-_nthm_close_context ();
+_nthm_close_context (void);

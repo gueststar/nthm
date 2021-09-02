@@ -65,7 +65,8 @@ _nthm_tethered (s, d, err)
 	 goto b;
   if (_nthm_pushed (r, &(s->reader), err) ? 0 : _nthm_bilaterally_freed (r, w, err) ? 1 : IER(166))
 	 goto b;
-  if (t = (s->yielded ? _nthm_enqueued (w, &(e->finishers), &(e->finisher_queue), err) : _nthm_pushed (w, &(e->blockers), err)))
+  t = (s->yielded ? _nthm_enqueued (w, &(e->finishers), &(e->finisher_queue), err) : _nthm_pushed (w, &(e->blockers), err));
+  if (t)
 	 s->depth = _nthm_scope_level (d, err);
   else if (!(_nthm_freed (w, err) ? _nthm_unilaterally_delisted (s->reader, err) : NULL))
 	 s->valid = MUGGLE(49);
@@ -101,7 +102,7 @@ _nthm_untethered (s, err)
 
   if ((! s) ? IER(169) : (s->valid == MAGIC) ? 0 : IER(170))
 	 return 0;
-  if (done = ! (s->reader))
+  if ((done = ! (s->reader)))
 	 return _nthm_pooled (s, err);
   if (_nthm_drained_by (s, d = _nthm_current_context (), err) ? 0 : (*err = (*err ? *err : NTHM_NOTDRN)))
 	 return 0;
@@ -141,7 +142,6 @@ _nthm_descendants_untethered (p, err)
 {
   scope_stack e;
   pipe_list c;
-  int done;
 
   if ((! p) ? IER(178) : (p->valid != MAGIC) ? IER(179) : 0)
 	 return 0;

@@ -84,7 +84,7 @@ main(argc, argv)
 {
   int err;
   interval x;
-  uintptr_t total, seed;
+  unsigned seed;
 
   err = 0;
   global_shortfall = 0;
@@ -106,6 +106,6 @@ main(argc, argv)
 		  }
 		pthread_mutex_destroy (&global_lock);
 	 }
-  printf (err ? "rubbish failed with seed 0x%lx\n%s\n" : "rubbish failed with seed 0x%lx\n", seed, nthm_strerror(err));
+  printf (err ? "rubbish failed with seed 0x%x\n%s\n" : "rubbish failed with seed 0x%x\n", seed, nthm_strerror(err));
   exit (EXIT_FAILURE);
 }

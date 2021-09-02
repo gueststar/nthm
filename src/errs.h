@@ -1,5 +1,5 @@
 /*
-  nthm -- non-preemptive thread hierarchy manager
+  Nthm -- non-preemptive thread hierarchy manager
 
   copyright (c) 2020, 2021 Dennis Furey
 
@@ -47,4 +47,4 @@ _nthm_open_errs (int *err);
 
 // release pthread resources and report errors to stderr
 extern void
-_nthm_close_errs ();
+_nthm_close_errs (void);

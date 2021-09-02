@@ -110,7 +110,8 @@ int main(argc, argv)
   pthread_t adder;
   pipe_list pipes;
   uintptr_t *cumulative_sum;
-  uintptr_t start, count, seed;
+  uintptr_t start, count;
+  unsigned seed;
 
   err = 0;
   start = 0;
@@ -143,6 +144,6 @@ int main(argc, argv)
 		  }
 		free (cumulative_sum);
 	 }
-  printf (err ? "freepool failed with seed 0x%lx\n%s\n" : "freepool failed with seed 0x%lx\n", seed, nthm_strerror(err));
+  printf (err ? "freepool failed with seed 0x%x\n%s\n" : "freepool failed with seed 0x%x\n", seed, nthm_strerror(err));
   exit(EXIT_FAILURE);
 }

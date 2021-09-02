@@ -36,6 +36,7 @@ main(argc, argv)
   int i, err;
   nthm_pipe source;
 
+  x = 0;
   err = 0;
   for (i = 0; err ? 0 : (i <= 1); i++)
 	 {

@@ -47,7 +47,7 @@ _nthm_open_pipes (int *err);
 
 // report memory leaks
 extern void
-_nthm_close_pipes ();
+_nthm_close_pipes (void);
 
 // allocate and initialize a pipe
 extern nthm_pipe

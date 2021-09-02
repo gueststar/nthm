@@ -75,7 +75,8 @@ main(argc, argv)
 {
   int err;
   interval x;
-  uintptr_t total, seed;
+  uintptr_t total;
+  unsigned seed;
 
   err = 0;
   GETRANDOM(seed);
@@ -88,12 +89,14 @@ main(argc, argv)
 		x->start = 0;
 		x->count = LAST_TERM;
 		total = approximate_sum_of_interval (x, &err);
+		if (total)
+		  total = 0;
 		if (! err)
 		  {
 			 printf ("killjoy detected no errors\n");
 			 exit (EXIT_SUCCESS);
 		  }
 	 }
-  printf (err ? "killjoy failed with seed 0x%lx\n%s\n" : "killjoy failed with seed 0x%lx\n", seed, nthm_strerror(err));
+  printf (err ? "killjoy failed with seed 0x%x\n%s\n" : "killjoy failed with seed 0x%x\n", seed, nthm_strerror(err));
   exit (EXIT_FAILURE);
 }
