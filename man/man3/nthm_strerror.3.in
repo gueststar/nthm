@@ -120,7 +120,8 @@ none
 .br
 .BR nthm_busy (3),
 .BR pthreads (7),
-.BR errno (3)
+.BR errno (3),
+.BR nthm_sync (3)
 .SH AUTHOR
 Dennis Furey 
 .MT @EMAIL@

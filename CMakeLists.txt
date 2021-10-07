@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.13.4)
 # set(CMAKE_C_COMPILER gcc)
 
 project(
-  nthm VERSION 0.9.3
+  nthm VERSION 0.10.0
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -24,8 +24,15 @@ include(GNUInstallDirs)
 # many false positives. -Werror=cast-function-type, -Wextra, and
 # -Wbad-function-cast are omitted because they break compatibility of
 # void pointers with uintptr_t in function type casts.
+#
+# Although using these compiler flags is considered good practice,
+# future versions of these compilers might break the build by
+# introducing new kinds of warnings based on future fads, which will
+# be treated as errors. If the repo is old and not building, try
+# disabling these options by deleting everything from "if" down to
+# "endif()" inclusive.
 
-if (${CMAKE_C_COMPILER_ID} STREQUAL Clang)
+if (CMAKE_C_COMPILER_ID MATCHES Clang)
   add_compile_options(-O2 -Werror -Walloca -Wcast-qual -Wconversion
 	 -Wformat=2 -Wformat-security -Wnull-dereference -Wstack-protector
 	 -Wstrict-overflow=3 -Wvla -Warray-bounds
@@ -36,7 +43,7 @@ if (${CMAKE_C_COMPILER_ID} STREQUAL Clang)
 	 -Wtautological-constant-in-range-compare -Wunreachable-code-aggressive
 	 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fPIC
 	 -fstack-clash-protection)
-elseif (${CMAKE_C_COMPILER_ID} STREQUAL GNU)
+elseif (CMAKE_C_COMPILER_ID MATCHES GNU)
    add_compile_options(-O2 -Werror -Wall -Wpedantic -Wformat=2
  	 -Wformat-overflow=2 -Wformat-truncation=2 -Wformat-security
  	 -Wnull-dereference -Wstack-protector -Wtrampolines -Walloca -Wvla
@@ -263,3 +270,4 @@ testme(killjoy)
 testme(bizzyb)
 testme(scopestrial)
 testme(sendany)
+testme(synchrotron)

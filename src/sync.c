@@ -41,7 +41,7 @@ static pthread_mutex_t memtest_lock;
 // non-zero means at least one thread has been created since the application started; used in the exit routine
 static int starting = 0;
 
-// the number recently created threads whose creation has not yet been confirmed by a call to _nthm_started
+// the number of recently created threads whose creation has not yet been confirmed by a call to _nthm_started
 static uintptr_t starters = 0;
 
 // used to wake up threads waiting for confirmation in _nthm_started
@@ -394,10 +394,10 @@ void
 _nthm_synchronize (err)
 	  int *err;
 
-	  // Join with the last thread still running, if any. Currently
-	  // this function called only by the exit routine _nthm_close_sync
-	  // but there may be a use for exposing it more directly in a
-	  // future version of the API.
+	  // Join with the last thread still running, if any. This function
+	  // called only by the exit routine _nthm_close_sync but may also
+	  // be called indirectly from user code through nthm_syncrhonize
+	  // in the public API.
 {
   void *leak;
 

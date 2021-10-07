@@ -605,3 +605,20 @@ nthm_exit_scope (err)
   if (_nthm_scope_exited (p, err))
 	 _nthm_unpool (p, err);
 }
+
+
+
+
+
+
+
+
+void
+nthm_sync (err)
+	  int *err;
+
+	  // Wait for all threads created by nthm to exit.
+{
+  API_ENTRY_POINT();
+  _nthm_synchronize (err);
+}

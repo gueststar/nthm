@@ -160,7 +160,8 @@ or a misuse of the API. Bug reports are appreciated.
 .BR nthm_tether (3),
 .br
 .BR nthm_strerror (3),
-.BR nthm_busy (3)
+.BR nthm_busy (3),
+.BR nthm_sync (3)
 .SH AUTHOR
 Dennis Furey 
 .MT @EMAIL@

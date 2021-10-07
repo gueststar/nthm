@@ -93,4 +93,8 @@ nthm_enter_scope (int *err);
 extern void
 nthm_exit_scope (int *err);
 
+// wait for all threads created by nthm to exit
+extern void
+nthm_sync (int *err);
+
 #endif

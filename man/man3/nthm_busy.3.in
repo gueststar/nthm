@@ -109,7 +109,8 @@ segfault.
 .BR nthm_blocked (3)
 .br
 .BR nthm_strerror (3),
-.BR pthreads (7)
+.BR pthreads (7),
+.BR nthm_sync (3)
 .SH AUTHOR
 Dennis Furey 
 .MT @EMAIL@

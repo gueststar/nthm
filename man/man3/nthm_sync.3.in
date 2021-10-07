@@ -1,0 +1,127 @@
+.\"                              hey, Emacs:   -*- nroff -*-
+.TH NTHM_SYNC 3 @DATE_VERSION_NTHM_MANUAL@
+.\" Please update the above date whenever this man page is modified.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins (default)
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nthm_sync \- wait for all threads created by nthm to exit
+.SH SYNOPSIS
+#include <nthm/nthm.h>
+.sp 1
+void
+.BR nthm_sync
+(
+int *
+.I err
+)
+.SH DESCRIPTION
+This function blocks the caller until all threads created by
+.BR nthm_open
+or
+.BR nthm_send
+have exited. Although the preferred means of synchronizing
+with threads created by
+.BR nthm_open
+is to use
+.BR nthm_select
+or
+.BR nthm_read,
+and although
+explicit synchronization with threads created by
+.BR nthm_send
+is not normally necessary, using 
+.BR nthm_sync
+to synchronize with the latter
+is appropriate when they use resources reclaimed by the caller.
+.SH ERRORS
+The
+.I *err
+parameter is assigned a non-zero error code by
+.BR nthm_sync
+if it is zero on entry and if an error is detected,
+but is left unchanged otherwise.
+No error code is ever assigned by
+.BR nthm_sync
+unless
+.BR nthm
+detects an internal error, whose code may range from
+.BR -NTHM_MIN_ERR
+to
+.BR -NTHM_MAX_ERR.
+Internal errors may indicate memory corruption, misuse of the API, or
+a bug in
+.BR nthm.
+Bug reports including error codes are welcome.
+.SH EXAMPLE
+In an application program containing this fragment,
+the function
+.BR f
+always observes a non-zero value of
+.BR global_resource
+even though the caller clears it after starting the thread, because
+the caller first waits for the thread to exit by calling
+.BR nthm_sync.
+.sp 1
+.nf
+   static int global_resource = 1;
+
+   void f (void *x)
+   {
+     if (! global_resource)
+        printf ("nthm_sync didn't work\\n");
+   }
+
+   // ... main thread below
+
+   err = 0;
+   nthm_send ((nthm_slacker) &f, x, &err);
+   nthm_sync (&err);
+   global_resource = 0;
+   if (err)
+      printf ("%s\\n", nthm_strerror (err));
+   exit (err ? EXIT_FAILURE : EXIT_SUCCESS);
+.fi
+.SH SEE ALSO
+.BR nthm (7),
+.BR nthm_open (3),
+.BR nthm_read (3),
+.BR nthm_select (3)
+.br
+.BR nthm_truncate (3),
+.BR nthm_truncate_all (3),
+.BR nthm_truncated (3)
+.br
+.BR nthm_enter_scope (3),
+.BR nthm_exit_scope (3)
+.br
+.BR nthm_kill (3),
+.BR nthm_kill_all (3),
+.BR nthm_killed (3)
+.br
+.BR nthm_untether (3),
+.BR nthm_tether (3),
+.br
+.BR nthm_blocked (3),
+.BR nthm_busy (3),
+.BR nthm_send (3)
+.br
+.BR nthm_strerror (3),
+.BR pthreads (7),
+.BR ulimit (1),
+.BR atexit (3)
+.SH AUTHOR
+Dennis Furey 
+.MT @EMAIL@
+.ME
+.SH PROJECT PAGE
+.UR @URL@
+.UE

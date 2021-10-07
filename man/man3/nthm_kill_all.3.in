@@ -85,11 +85,9 @@ Bug reports are gratefully received.
 .BR nthm_enter_scope (3),
 .BR nthm_exit_scope (3)
 .br
-.BR nthm_enter_scope (3),
-.BR nthm_exit_scope (3)
-.br
 .BR nthm_untether (3),
-.BR nthm_tether (3)
+.BR nthm_tether (3),
+.BR nthm_sync (3)
 .br
 .BR nthm_strerror (3),
 .BR nthm_busy (3)
