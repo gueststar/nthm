@@ -19,14 +19,14 @@ nthm_exit_scope \- allow selection of previously opened pipes
 .SH SYNOPSIS
 #include <nthm/nthm.h>
 .sp 1
-void
+int
 .BR nthm_enter_scope
 (
 int
 .I *err
 )
 .sp 1
-void
+int
 .BR nthm_exit_scope
 (
 int
@@ -135,7 +135,9 @@ just as if the pipes had been tethered to a different thread.
 .SH RETURN VALUE
 A non-zero value is returned by
 .BR nthm_enter_scope
-if it succeeds.
+and
+.BR nthm_exit_scope
+if they succeed.
 .SH ERRORS
 .P
 If
