@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.13.4)
 # set(CMAKE_C_COMPILER gcc)
 
 project(
-  nthm VERSION 0.10.1
+  nthm VERSION 0.10.2
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -255,6 +255,7 @@ function(testme testname)
   if (VALGRIND)
 	 add_test (NAME ${testname}_mem COMMAND ${MEMCHECK_COMMAND} ${CMAKE_CURRENT_BINARY_DIR}/${testname})
 	 set_tests_properties(${testname}_mem PROPERTIES PASS_REGULAR_EXPRESSION "definitely lost: 0|no leaks are possible")
+	 set_tests_properties(${testname}_mem PROPERTIES FAIL_REGULAR_EXPRESSION "Invalid")
 	 add_test (NAME ${testname}_drd COMMAND ${DRDCHECK_COMMAND} ${CMAKE_CURRENT_BINARY_DIR}/${testname})
 	 set_tests_properties(${testname}_drd PROPERTIES FAIL_REGULAR_EXPRESSION "Acquired")
   endif ()
