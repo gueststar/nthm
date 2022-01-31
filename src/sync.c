@@ -241,7 +241,7 @@ _nthm_thread_spec_of (source, operator, mutator, operand, write_only, err)
   if (source ? ((t = (thread_spec) malloc (sizeof (*t))) ? 0 : (*err = (*err ? *err : ENOMEM))) : 1)
 	 if (source ? (_nthm_retired (source, err) ? 1 : IER(313)) : 1)
 		return NULL;
-  bzero (t, sizeof (*t));
+  memset (t, 0, sizeof (*t));
   t->write_only = write_only;
   t->operator = operator;
   t->mutator = mutator;

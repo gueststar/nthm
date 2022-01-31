@@ -125,7 +125,7 @@ _nthm_scope_entered (p, err)
 	 goto a;
   if ((pthread_mutex_lock (&(p->lock)) ? IER(278) : 0) ? (p->valid = MUGGLE(98)) : 0)
 	 goto a;
-  bzero (e, sizeof (*e));
+  memset (e, 0, sizeof (*e));
   e->enclosure = p->scope;
   p->scope = e;
 #ifdef MEMTEST

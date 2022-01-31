@@ -111,7 +111,7 @@ _nthm_new_pipe (err)
 
   if ((p = (nthm_pipe) malloc (sizeof (*p))) ? 0 : (*err = (*err ? *err : ENOMEM)))
 	 return NULL;
-  bzero (p, sizeof (*p));
+  memset (p, 0, sizeof (*p));
   if ((e = pthread_cond_init (&(p->termination), NULL)))
 	 goto a;
   if ((e = pthread_cond_init (&(p->progress), NULL)))

@@ -116,7 +116,7 @@ _nthm_pipe_list_of (p, err)
   pipe_lists++;
   pthread_mutex_unlock (&memtest_lock);
 #endif
-  bzero (t, sizeof (*t));
+  memset (t, 0, sizeof (*t));
   t->pipe = p;
   return t;
 }

@@ -76,7 +76,7 @@ speed the diagnosis of others.
 * The analogous practice for array bounds checking applies.
 * Arithmetic operations have to be checked for overflow if correctness
   is at stake and handled appropriately.
-* Newly allocated structures have to be initialized with `bzero` prior
+* Newly allocated structures have to be cleared with `memset` prior
   to anything else. This way, pointer fields are null, conditions are
   false, and numbers are zero by default, with no need for remembering
   to update the initialization function later when the definition of
