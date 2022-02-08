@@ -395,9 +395,9 @@ _nthm_synchronize (err)
 	  int *err;
 
 	  // Join with the last thread still running, if any. This function
-	  // called only by the exit routine _nthm_close_sync but may also
-	  // be called indirectly from user code through nthm_syncrhonize
-	  // in the public API.
+	  // is called only by the exit routine _nthm_close_sync but may
+	  // also be called indirectly from user code through
+	  // nthm_syncrhonize in the public API.
 {
   void *leak;
 
