@@ -83,6 +83,8 @@ speed the diagnosis of others.
   the structure is modified to have more fields.
 * No recursion is allowed. (The C memory model permits only a
   constant amount of stack space and it's separate from the heap.)
+* `goto` statements are not considered harmful but may jump forward
+  only.
 
 ## Data structures
 
