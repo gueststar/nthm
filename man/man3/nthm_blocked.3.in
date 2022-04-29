@@ -61,20 +61,21 @@ reading of previously opened
 pipes with other unspecified operations.
 .sp 1
 .NF
-  while (! err)
-    if (nthm_blocked (&err))
-      {
-        // do something other than waiting for pipes
-      }
-    else if (err) // not successful
-      break;
-    else if ((p = nthm_select (&err)) // not blocked
-      {
-        x = nthm_read (p, &err))
-        // do something with data x read from pipe p
-      }
-    else         // all visible pipes have been read
-      break;
+   while (! err)
+      if (nthm_blocked (&err))
+         {
+           // do something other than waiting for pipes
+         }
+      else if (err) // not successful
+         break;
+      else if ((p = nthm_select (&err))  // not blocked
+         {
+           x = nthm_read (p, &err))
+           // do something with data x read from pipe p
+         }
+      else          // all visible pipes have been read
+         break;
+.fi
 .SH SEE ALSO
 .BR nthm (7),
 .BR nthm_open (3),

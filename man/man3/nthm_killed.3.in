@@ -133,9 +133,6 @@ If
 is zero on entry and non-zero on exit, then the function has not
 succeeded and one of the following codes may be reported due to the
 respective condition.
-.BR nthm_open
-and therefore can not be killed by
-.BR nthm_kill.
 .TP
 .BR NTHM_NULPIP
 The

@@ -92,7 +92,6 @@ If
 .I *err
 is zero on entry and non-zero on exit,
 then an internal consistency check has failed.
-Bug reports are gratefully received.
 .SH SEE ALSO
 .BR nthm (7),
 .BR nthm_open (3),

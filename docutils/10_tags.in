@@ -1,0 +1,31 @@
+#!@SED@ -f
+
+# Perform the first pass to convert nroff to html by transforming
+# whatever depends only on the current input line, mainly headings,
+# links, and typography.
+
+# html escapes
+   s/</\&lt;/g
+   s/>/\&gt;/g
+   s/\\-/-/g
+
+# make section headings
+   s/\(^\.SH\)\([[:blank:]]\+\)\(.*\)/<h6\ style="color:\ @SECTION_HEADING_COLOR@;">\3<\/h6>/
+
+# make hyperlinks
+   s/\(^\.BR\)\([[:blank:]]\+\)\(@LINK_TARGETS@\)\(\([[:blank:]]\)*\(([[:digit:]])\)\)\?\([[:punct:]]\)*[[:blank:]]*$/<a\ class="font-monospace\ link-light"\ href="\3.html"\ style="color:\ @LINK_COLOR@;text-decoration:\ inherit">\3<\/a>\7/
+   s/\(^\.UR\)\([[:blank:]]\+\)\(\([[:alnum:]]\|\:\|\.\|\/\)*\)/<a\ class="font-monospace\ link-light"\ href="\3"\ style="color:\ @LINK_COLOR@;text-decoration:\ inherit;">\3<\/a>/
+   /^\.UE/d
+
+# make mail links
+   s/\(^\.MT\)\([[:blank:]]\+\)\(\([[:alnum:]]\|@\|\.\)*\)/(<a\ class="font-monospace\ link-light" href="mailto:\3"\ style="color:\ @LINK_COLOR@;text-decoration:\ inherit;">\3<\/a>)/
+   /^\.ME/d
+
+# italicize
+   s/\(^\.I\)\([[:blank:]]\+\)\(.*\)/<em>\3<\/em>/
+
+# emphasize keywords
+   s/\(^\.BR\)\([[:blank:]]\+\)\(\([[:alnum:]]\|_\|-\)*\)/<strong\ class="font-monospace"\ style="color:\ @KEYWORD_COLOR@;">\3<\/strong>/
+
+# break
+   s/^\.br[[:blank:]]*$/<br>/

@@ -214,7 +214,7 @@ On 64-bit systems, use this command to display the default stack size in Kbytes.
 .BR nthm_killed (3)
 .br
 .BR nthm_untether (3),
-.BR nthm_tether (3),
+.BR nthm_tether (3)
 .br
 .BR nthm_blocked (3),
 .BR nthm_busy (3),

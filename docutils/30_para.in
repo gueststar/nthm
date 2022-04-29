@@ -1,0 +1,69 @@
+#!@SED@ -nf
+
+# Put html paragraph tags where appropriate. Explicit paragraphs start
+# with .P. Implied paragraphs start in every section. Paragraphs end
+# with .P, .TP, or another section.
+
+# recall the current parapgraph from the hold space, if any
+x
+# if no paragraph has started
+/./!{
+   # recall the current line
+   x
+   # if the current line starts with .P or a heading
+   /\.P\|<h6.*>\|<\/pre>/{
+      # make opening tags for a paragraph
+      {s/^\.P.*//; s/\(.*\)/\1\n<p\ style="margin:\ 0px\ @SECTION_INDENTATION@\ 16px;">/; s/^\n//}
+      # start storing the paragraph in the hold space
+      h
+      # recycle
+      d}
+   # print the current line, which is outside of a paragraph
+   p
+   # recycle
+   d}
+# recall the current line
+x
+# if a paragraph is about to end with a new section or paragraph
+/<h6.*>\|\.P/{
+   # recall the paragraph
+   x
+   # print the whole paragraph
+   p
+   # recall the new section line
+   x
+   # get rid of .P directives but leave headings
+   s/^\.P.*//; 
+   # put closing paragraph tags before it and opening tags after it
+   {s/\(.*\)/<\/p>\n\1\n<p\ style="margin:\ 0px\ @SECTION_INDENTATION@\ 16px;">/; s/\n\n/\n/}
+   # reinitialize the stored paragraph
+   h
+   # recycle
+   d}
+# if a paragraph is about to end with a list or a quote
+/<pre>\|\.TP\|<ul[[:blank:]]/{
+   # recall the paragraph
+   x
+   # print the whole paragraph
+   p
+   # recall the new list or quote line
+   x
+   # put closing paragraph tags in front of it but nothing after it
+   {s/\(.*\)/<\/p>\n\1/; s/\n\n/\n/}
+   # print the line
+   p
+   # erase the line
+   z
+   # clear the paragraph by overwriting it with the erased line
+   h
+   # recycle
+   d}
+# handle separators within paragraphs
+s/^\.sp.*$/<\/p><p\ style="margin:\ 0px\ @SECTION_INDENTATION@\ 16px;">/
+# append the current line to the current paragraph
+H
+# if it's the last line, put in a closing tag
+$a\
+<\/p>
+# recycle
+d

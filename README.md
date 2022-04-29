@@ -17,10 +17,12 @@ concurrent programming.
 
 It's easy to get started with `nthm`.
 
-* `nthm_open` creates a thread running your code, passes input data to
-  it, and returns a pipe.
-* `nthm_read` gets output data from a pipe when the created thread
-  finishes running.
+* [`nthm_open`](https://gueststar.github.io/nthm_docs/nthm_open.html)
+  creates a thread running your code, passes input data to it, and
+  returns a pipe.
+* [`nthm_read`](https://gueststar.github.io/nthm_docs/nthm_read.html)
+  gets output data from a pipe when the created thread finishes
+  running.
 
 Your code that opens a pipe doesn't have to close it or do anything
 else after reading from it because `nthm` automatically reclaims the
@@ -37,8 +39,8 @@ multiple threads with varying workloads run concurrently, `nthm` helps
 you eliminate unnecessary blocking by reading from their pipes in
 whatever order they finish.
 
-* `nthm_select` returns the pipe from the next thread to finish
-  running.
+* [`nthm_select`](https://gueststar.github.io/nthm_docs/nthm_select.html)
+  returns the pipe from the next thread to finish running.
 
 Threads managed by `nthm` are more like cattle than pets (as devops
 guys like to say). You can open a large number of pipes without
@@ -49,21 +51,22 @@ Sometimes you might decide a thread has been running long enough
 already and you'd like it to finish up by approximating its result in
 some application-specific way.
 
-* `nthm_truncate` tells a specific thread to truncate its output.
-* `nthm_truncate_all` tells all locally created threads to truncate
-  their output.
-* `nthm_truncated` polled within a worker thread tells it that
-  truncated output has been requested.
+* [`nthm_truncate`](https://gueststar.github.io/nthm_docs/nthm_truncate.html)
+  tells a specific thread to truncate its output.
+* [`nthm_truncate_all`](https://gueststar.github.io/nthm_docs/nthm_truncate_all.html)
+  tells all locally created threads to truncate their output.
+* [`nthm_truncated`](https://gueststar.github.io/nthm_docs/nthm_truncated.html)
+  polled within a worker thread tells it that truncated output has been requested.
 
 You might decide a thread's services are no longer required and kill
 it instead of reading from it.
 
-* `nthm_kill` tells a specific thread to shut itself down and that
-  its output will be ignored.
-* `nthm_kill_all` kills all threads created within the currently
-  running thread.
-* `nthm_killed` polled within a thread tells it that it has been
-  killed.
+* [`nthm_kill`](https://gueststar.github.io/nthm_docs/nthm_kill.html)
+  tells a specific thread to shut itself down and that its output will be ignored.
+* [`nthm_kill_all`](https://gueststar.github.io/nthm_docs/nthm_kill_all.html)
+  kills all threads created within the currently running thread.
+* [`nthm_killed`](https://gueststar.github.io/nthm_docs/nthm_killed.html)
+  polled within a thread tells it that it has been killed.
 
 Threads are not killed preemptively. They can take as much time as
 needed to shut down cleanly after getting notified (as in releasing
@@ -80,10 +83,10 @@ management.
 One last extra fancy thing you can do is reorganize the thread
 hierarchy on the fly.
 
-* `nthm_untether` makes a thread independent of the thread that created
-  it.
-* `nthm_tether` subjects an untethered thread to the currently
-  running thread.
+* [`nthm_untether`](https://gueststar.github.io/nthm_docs/nthm_untether.html)
+  makes a thread independent of the thread that created it.
+* [`nthm_tether`](https://gueststar.github.io/nthm_docs/nthm_tether.html)
+  subjects an untethered thread to the currently running thread.
 
 By untethering a thread, you can send its pipe to any other thread,
 even to one not created by `nthm_open`, and read from it in the context
@@ -93,7 +96,9 @@ and its pipe is ignored by `nthm_select`. However, you can make an
 untethered thread selectable and jointly killable by tethering it.
 
 For full API documentation, refer to the `nthm` manual pages included
-with the installation. For coding examples, see the test directory.
+with the installation, which are also accessible
+[online](https://gueststar.github.io/nthm_docs/nthm.html) and suitable
+for self-hosting. For coding examples, see the test directory.
 
 ## Limitations
 
@@ -137,15 +142,16 @@ for a less thorough test suite otherwise. The following commands
 install the shared library, header file, manual pages, and README
 files at standard paths, normally under `/usr/local` so as not to
 antagonize your distro's package manager.
-
-    git clone https://github.com/gueststar/nthm
-    cd nthm
-    mkdir build
-    cd build
-    cmake ..
-    make
-    make test             # optional
-    sudo make install
+```sh
+git clone https://github.com/gueststar/nthm
+cd nthm
+mkdir build
+cd build
+cmake ..
+make
+make test             # optional
+sudo make install
+```
 
 To uninstall, run `sudo make uninstall` from the original build
 directory or manually remove the files listed in the build directory's

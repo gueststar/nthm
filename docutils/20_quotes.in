@@ -1,0 +1,59 @@
+#!@SED@ -nf
+
+# Put html pre tags around verbatim quoted code blocks and remove
+# unnecessary formatting.
+
+:a
+# if the current line starts with .nf optionally preceded by a line that starts with .sp
+/^\(\.sp\([[:blank:]]\+[[:digit:]]*\)\?[[:blank:]]*\n\)\?\.\(nf\|NF\).*$/{
+   # make opening tags for a new code block
+   s/.*/<div\ style="margin:\ 0px\ @SUBSECTION_INDENTATION@\ 12px;padding:20px;color:@CODE_COLOR@;background-color:@CODE_BACKGROUND_COLOR@"><pre>/
+   # store the tags in the hold space
+   h
+   # recycle
+   n}
+# recall the current code block, if any
+x
+# if no code block has started
+/./!{
+  # recall the current line
+  x
+  # if the current line starts with .sp
+  /\.sp\([[:blank:]]\+[[:digit:]]*\)\?[[:blank:]]*$/{
+     # tuck the next line into it
+     N
+     # re-check the combined lines for the beginning of a code block
+     ba}
+  # if the current line doesn't start with sp, print something outside of a code block
+  p
+  # recycle
+  d}
+# if a code block has started but not ended with .fi
+/\.fi[[:blank:]]*$/!{
+   # recall the current line
+   x
+   # unindent the current line
+   s/^[[:blank:]]\{3\}//
+   # undo html escapes
+   s/\&lt;/</g
+   s/\&gt;/>/g
+   # append the line to the block
+   H
+   # recycle
+   d}
+# if a code block has just ended with .fi, put closing tags on it
+s/\n\.fi[[:blank:]]*$/<\/pre><\/div>/
+# print the whole code block
+p
+# recall the current line, which immediately follows a code block
+x
+# if the line following a code block doesn't start with .sp
+/^\.sp\([[:blank:]]\+[[:digit:]]*\)\?[[:blank:]]*$/!{
+   # print it
+   p}
+# erase the line
+z
+# erase the block by overwriting it with the erased line
+h
+# recycle
+d

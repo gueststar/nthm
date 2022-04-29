@@ -1,0 +1,70 @@
+#!@SED@ -nf
+
+# Convert bullet point lists to html markup.
+
+# recall the current bullet point list from the hold space, if any
+x
+# if no bullet point list has started
+/./!{
+   # recall the current line
+   x
+   # if the current line starts with an asterisk following a line starting with .TP
+   :a
+   /^\(\.TP[[:blank:]]*\n\)\*[[:blank:]]*$/{
+      # make opening tags for a bullet point list
+      s/.*/<ul\ style="margin:\ 0px\ @SECTION_INDENTATION@\ 16px;"><li>/
+      # start storing the bullet point list in the hold space
+      h
+      # recycle
+      d}
+   # if the current line starts with .TP
+   /^\.TP[[:blank:]]*$/{
+      # tuck the next line into it
+      N
+      # re-check the combined lines for the beginning of a bullet point list
+      ba}
+   # print the current line, which is outside of a bullet point list
+   p
+   # recycle
+   d}
+# if a bullet point list has started, recall the current line
+x
+# if the current line starts with an asterisk following a line starting with .TP
+:b
+/^\(\.TP[[:blank:]]*\n\)\*[[:blank:]]*$/{
+   # make tags to close the previous bullet point list item and open the next one
+   s/.*/<\/li><li>/
+   # append them to the list
+   H
+   # recycle
+   n}
+# if the current line starts with .TP
+/\.TP[[:blank:]]*$/{
+   # tuck the next line into it
+   N
+   # re-check the combined lines for the beginning of bullet point list item
+   bb}
+# if a bullet point list is about to end with a new section, paragraph, or labeled list
+/^\(<h6.*>\|<p[[:blank:]]\|\.TP\)/{
+   # recall the bullet point list
+   x
+   # print the whole bullet point list
+   p
+   # recall the new section or paragraph line
+   x
+   # put closing list tags in front of it
+   s/\(.*\)/<\/li><\/ul>\n\1/  
+   # print the line
+   p
+   # erase the line
+   z
+   # clear the block by overwriting it with the erased line
+   h
+   # recycle
+   d}
+# handle subparagraphs within a bullet point list
+s/^\.sp.*$/<div\ style="height:\ 8px;"><\/div>/
+# append the current line to the current bullet point list
+H
+# recycle
+d

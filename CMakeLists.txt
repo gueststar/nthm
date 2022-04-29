@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.13.4)
 # set(CMAKE_C_COMPILER gcc)
 
 project(
-  nthm VERSION 0.10.5
+  nthm VERSION 0.10.6
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -79,11 +79,24 @@ install(
 
 find_program(GZIP gzip)
 
+# building manpages or html docs requires these two
+find_program(FIND find)
+find_program(DATE date)
+
+# building html docs also requires these two
+find_program(SED sed)
+find_program(SORT sort)
+
 if (GZIP)
   set (GZIP_MANPAGES ${GZIP} -rf man)
 else ()
   set (GZIP_MANPAGES "")
   message (STATUS "gzip not found; manual pages not compressed")
+endif ()
+
+option (HTML_DOCS "generate manual pages also in html format" ON)
+if (HTML_DOCS)
+  set (HTML_DOCS_ON 1)
 endif ()
 
 configure_file(
@@ -108,13 +121,27 @@ else ()
 	 COMMAND ${GZIP_MANPAGES})
 endif ()
 
-add_custom_target(
-  manpages
-  DEPENDS man)
- 
-install(
-  DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/man/man3 ${CMAKE_CURRENT_BINARY_DIR}/man/man7
-  DESTINATION ${CMAKE_INSTALL_MANDIR})
+if (NOT FIND)
+  message(STATUS "find utility not found; manpages not generated")
+elseif (NOT DATE)
+  message(STATUS "date utility not found; manpages not generated")
+else ()
+  add_custom_target(
+	 manpages
+	 DEPENDS man)
+  install(
+	 DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/man/man3 ${CMAKE_CURRENT_BINARY_DIR}/man/man7
+	 DESTINATION ${CMAKE_INSTALL_MANDIR})
+  if (HTML_DOCS)
+	 if (SED)
+		if (SORT)
+		  install(
+			 DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html
+			 DESTINATION ${CMAKE_INSTALL_DOCDIR})
+		endif ()
+	 endif ()
+  endif ()
+endif ()
 
 # ------------- uninstall target -------------
 

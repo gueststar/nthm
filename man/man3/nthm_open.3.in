@@ -19,7 +19,8 @@ nthm_open \- start a new thread and return a pipe from it
 .sp 1
 .BR nthm_pipe
 .BR nthm_open
-(nthm_worker
+(
+.BR nthm_worker
 .I &operator
 , void
 .I *operand
@@ -175,7 +176,7 @@ On 64-bit systems, use this command to display the default stack size in Kbytes.
 .BR nthm_killed (3)
 .br
 .BR nthm_untether (3),
-.BR nthm_tether (3),
+.BR nthm_tether (3)
 .br
 .BR nthm_blocked (3),
 .BR nthm_busy (3),

@@ -1,0 +1,19 @@
+#!@SED@ -nf
+
+# Preprocess an nroff file.
+
+# remove comments
+/^\.\\"/d
+:a
+# if two lines have been put together and the second is starts with .br
+/\n\.br/{
+   # replace the second line with a comma
+   s/\n\.br/,/}
+# if a line starts with .BR and ends with a parenthesized digit
+/\.BR[[:blank:]]\+.*([[:digit:]])[[:blank:]]*$/{
+   # put it together with the next line
+   N
+   # revisit the test above
+   ba}
+# print the line
+p

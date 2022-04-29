@@ -38,7 +38,7 @@ These functions are an advanced feature of
 whose understanding depends on an understanding of
 .BR nthm_select
 and other functions. See the
-.BR NOTES
+NOTES
 section below for intended use cases.
 .P
 Normally

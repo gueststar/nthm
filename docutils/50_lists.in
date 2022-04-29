@@ -1,0 +1,75 @@
+#!@SED@ -nf
+
+# Convert labeled lists to html markup.
+
+# recall the current list from the hold space, if any
+x
+# if no list has started
+/./!{
+   # recall the current line
+   x
+   :a
+   # if the current line consists of a non-blank label and follows a line starting with .TP
+   /\.TP[[:blank:]]*\n[[:blank:]]*[[:print:]]/{
+      # get rid of the .TP directive
+      s/.*\n//
+      # format the label in a paragraph followed by an opening tag for the first item
+      s/\(.*\)/<p\ style="margin:\ -5px\ @SECTION_INDENTATION@\ -3px;">\1<\/p><p\ style="margin:\ 0px\ @SUBSECTION_INDENTATION@\ 16px;">/
+      # start storing the list in the hold space
+      h
+      # recycle
+      d}
+   # if the current line starts with .TP
+   /^\.TP[[:blank:]]*$/{
+      # tuck the next line into it
+      N
+      # re-check the combined lines for the beginning of a bullet point list
+      ba}
+   # print the current line, which is outside of a list
+   p
+   # recycle
+   d}
+# if a list has started, recall the current line
+x
+:b
+# if the current line starts with a non-blank label following a line starting with .TP
+/\.TP[[:blank:]]*\n[[:blank:]]*[[:print:]]/{
+   # get rid of the .TP directive
+   s/.*\n//
+   # format the label as a paragraph between a closing paragraph tag
+   # for the previous item an opening tag for the next item
+   s/\(.*\)/<\/p><p\ style="margin:\ -5px\ @SECTION_INDENTATION@\ -3px;">\1<\/p><p\ style="margin:\ 0px\ @SUBSECTION_INDENTATION@\ 16px;">/
+   # append it to the list
+   H
+   # recycle
+   n}
+# if the current line starts with .TP
+/\.TP[[:blank:]]*$/{
+   # tuck the next line into it
+   N
+   # re-check the combined lines for the beginning of a list item
+   bb}
+# if a list is about to end with a new section or paragraph
+/<h6.*>\|<p[[:blank:]]\|\.P[[:blank:]]/{
+   # recall the list
+   x
+   # print the whole list
+   p
+   # recall the new section or paragraph line
+   x
+   # put a closing paragraph tag in front of it
+   s/\(.*\)/<\/p>\n\1/  
+   # print the line
+   p
+   # erase the line
+   z
+   # clear the block by overwriting it with the erased line
+   h
+   # recycle
+   d}
+# handle subparagraphs within labeled lists
+s/^\.sp.*$/<\/p><p\ style="margin:\ 0px\ @SUBSECTION_INDENTATION@\ 16px;">/
+# append the current line to the current list
+H
+# recycle
+d

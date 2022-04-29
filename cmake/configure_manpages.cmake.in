@@ -1,5 +1,7 @@
 find_program(FIND find)
 find_program(DATE date)
+find_program(SED sed)
+find_program(SORT sort)
 
 if (NOT FIND)
    message(FATAL_ERROR "find utility not found")
@@ -10,9 +12,7 @@ if (NOT DATE)
 endif ()
 
 set (VERSION @nthm_VERSION_MAJOR@.@nthm_VERSION_MINOR@.@nthm_VERSION_PATCH@)
-
 set (URL @nthm_HOMEPAGE_URL@)
-
 set (EMAIL @MAINTAINER_EMAIL@)
 
 execute_process(
@@ -21,13 +21,81 @@ execute_process(
 
 execute_process(
   OUTPUT_VARIABLE MAN_FILES
+  COMMAND ${CMAKE_COMMAND} -E touch @CMAKE_CURRENT_BINARY_DIR@/tempfile
   WORKING_DIRECTORY @CMAKE_CURRENT_SOURCE_DIR@
   COMMAND ${FIND} man -name "*.in"
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-string(REPLACE "\n" ";" MAN_FILES ${MAN_FILES})
+# html styling
+set (TITLE_COLOR "var(--bs-gray)")
+set (SECTION_HEADING_COLOR "#ff5c5c")
+set (TEXT_COLOR "var(--bs-white)")
+set (BACKGROUND_COLOR "var(--bs-dark)")
+set (LINK_COLOR "#5c76ff")
+set (KEYWORD_COLOR "#45b74a")
+# for blocks of verbatim quoted code fragments
+set (CODE_COLOR "rgb(31,255,63)")
+set (CODE_BACKGROUND_COLOR "rgb(0,0,0)")
+# the indentation of text in a section under an unindented heading, like an nroff rendered manpage
+set (SECTION_INDENTATION 40px)
+# the indentation of a code block or of text in a bullet point or labled list within a section
+set (SUBSECTION_INDENTATION 80px)
 
-foreach(MAN_FILE IN LISTS MAN_FILES)
+if (NOT SED)
+  message(STATUS "sed utility not found; html docs not generated")
+elseif (NOT SORT)
+  message(STATUS "sort utility not found; html docs not generated")
+elseif (@HTML_DOCS_ON@)
+  execute_process(
+	 OUTPUT_VARIABLE SED_FILES
+	 WORKING_DIRECTORY @CMAKE_CURRENT_SOURCE_DIR@
+	 COMMAND ${CMAKE_COMMAND} -E env ${FIND} docutils -name "*.in"
+	 COMMAND ${CMAKE_COMMAND} -E env ${SORT} -n
+	 OUTPUT_STRIP_TRAILING_WHITESPACE)
+  # rewrite keywords to hyperlinks only if they're in this list
+  string(REPLACE "\n" ";" LINK_TARGET_LIST ${MAN_FILES})
+  foreach(LINK_TARGET IN LISTS LINK_TARGET_LIST)
+	 string(REGEX REPLACE "^man/man.." "" LINK_TARGET ${LINK_TARGET})
+	 string(REGEX REPLACE "\\..*$" "" LINK_TARGET ${LINK_TARGET})
+	 if (LINK_TARGETS)
+		string(PREPEND LINK_TARGETS "\\|")
+	 endif ()
+	 string(PREPEND LINK_TARGETS ${LINK_TARGET})
+  endforeach ()
+  string(REPLACE "\n" ";" SED_FILE_LIST ${SED_FILES})
+  foreach(SED_FILE IN LISTS SED_FILE_LIST)
+	 string(REGEX REPLACE ".in$" "" SED_FILE ${SED_FILE})
+	 configure_file(
+		@CMAKE_CURRENT_SOURCE_DIR@/${SED_FILE}.in @CMAKE_CURRENT_BINARY_DIR@/${SED_FILE}
+		@ONLY)
+  endforeach ()
+  string(REGEX REPLACE ".in\n" "\n" SED_FILES ${SED_FILES})
+  string(REGEX REPLACE ".in$" "" SED_FILES ${SED_FILES})
+  string(REPLACE "\n" ";" SED_FILE_LIST ${SED_FILES})
+endif ()
+
+string(REPLACE "\n" ";" MAN_FILE_LIST ${MAN_FILES})
+foreach(MAN_FILE IN LISTS MAN_FILE_LIST)
   string(REGEX REPLACE ".in$" "" MAN_FILE ${MAN_FILE})
   configure_file(@CMAKE_CURRENT_SOURCE_DIR@/${MAN_FILE}.in @CMAKE_CURRENT_BINARY_DIR@/configured_${MAN_FILE})
+  if (@HTML_DOCS_ON@)
+	 if (SED)
+		if (SORT)
+		  string(REGEX REPLACE "\\..*$" ".html" HTML_FILE ${MAN_FILE})
+		  string(REGEX REPLACE "^man/man.." "html/" HTML_FILE ${HTML_FILE})
+		  configure_file(@CMAKE_CURRENT_SOURCE_DIR@/${MAN_FILE}.in @CMAKE_CURRENT_BINARY_DIR@/${HTML_FILE})
+#		  string(REPLACE "\n" ";" SED_FILE_LIST ${SED_FILES})
+		  foreach(SED_FILE IN LISTS SED_FILE_LIST)
+			 execute_process(
+				WORKING_DIRECTORY @CMAKE_CURRENT_BINARY_DIR@
+				INPUT_FILE ${HTML_FILE}
+				OUTPUT_FILE tempfile
+				COMMAND ${CMAKE_COMMAND} -E env ${SED_FILE})
+			 execute_process(
+				WORKING_DIRECTORY @CMAKE_CURRENT_BINARY_DIR@
+				COMMAND ${CMAKE_COMMAND} -E copy tempfile ${HTML_FILE})
+		  endforeach ()
+		endif ()
+	 endif ()
+  endif ()
 endforeach ()
