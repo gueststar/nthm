@@ -85,7 +85,6 @@ foreach(MAN_FILE IN LISTS MAN_FILE_LIST)
 		  string(REGEX REPLACE "\\..*$" ".html" HTML_FILE ${MAN_FILE})
 		  string(REGEX REPLACE "^man/man.." "html/" HTML_FILE ${HTML_FILE})
 		  configure_file(@CMAKE_CURRENT_SOURCE_DIR@/${MAN_FILE}.in @CMAKE_CURRENT_BINARY_DIR@/${HTML_FILE})
-#		  string(REPLACE "\n" ";" SED_FILE_LIST ${SED_FILES})
 		  foreach(SED_FILE IN LISTS SED_FILE_LIST)
 			 execute_process(
 				WORKING_DIRECTORY @CMAKE_CURRENT_BINARY_DIR@

@@ -26,13 +26,13 @@
    # parenthesize the manual section number
    s/\([[:blank:]]*\)\([[:digit:]]\+\)/\ (\2)\n/
    # delimit the manual title marked up for left and right columns
-   s/\(.*\)\n/<div\ class="col-md-4"\ style="height:\ 0px;"><h5\ style="color:\ @TITLE_COLOR@;">\1<\/h5><\/div>\n<div\ class="col-md-4"><h5\ class="text-end"\ style="color:\ @TITLE_COLOR@;">\1<\/h5><\/div>\n/
+   s/\(.*\)\n/<div\ class="col-5 col-sm-5 col-md-4"\ style="height:\ 0px;"><h5\ style="color:\ @TITLE_COLOR@;">\1<\/h5><\/div>\n<div\ class="col-5 col-sm-5 col-md-4"><h5\ class="text-end"\ style="color:\ @TITLE_COLOR@;">\1<\/h5><\/div>\n/
    # unquote and delimit the date
-   s/\(.*\n\)\(.*\n\)[[:blank:]]*\("\(\([[:alnum:]]\|[[:blank:]]\|,\)*\)"\)/\1\2<div\ class="col-md-4"><h5\ class="text-center"\ style="color:\ @TITLE_COLOR@;">\4<\/h5><\/div>\n/
+   s/\(.*\n\)\(.*\n\)[[:blank:]]*\("\(\([[:alnum:]]\|[[:blank:]]\|,\)*\)"\)/\1\2<div\ class="col-2 col-sm-2 col-md-4"><h5\ class="text-center"\ style="color:\ @TITLE_COLOR@;">\4<\/h5><\/div>\n/
    # unquote and delimit the version
-   s/\(.*\n\)\(.*\n\)\(.*\n\)[[:blank:]]*\("\(\([[:alnum:]]\|[[:blank:]]\|\.\)*\)"\)/\1\2\3<div\ class="col-md-4"><h5\ style="color:\ @TITLE_COLOR@;">\5<\/h5><\/div>\n/
+   s/\(.*\n\)\(.*\n\)\(.*\n\)[[:blank:]]*\("\(\([[:alnum:]]\|[[:blank:]]\|\.\)*\)"\)/\1\2\3<div\ class="col-5 col-sm-5 col-md-4"><h5\ style="color:\ @TITLE_COLOR@;">\5<\/h5><\/div>\n/
    # unquote and delimit the manual page entry name
-   s/\(.*\n\)\(.*\n\)\(.*\n\)\(.*\n\)[[:blank:]]*\("\(\([[:alnum:]]\|[[:blank:]]\)*\)"\)/\1\2\3\4<div\ class="col-md-4"><h5\ class="text-center"\ style="color:\ @TITLE_COLOR@;">\6<\/h5><\/div>/
+   s/\(.*\n\)\(.*\n\)\(.*\n\)\(.*\n\)[[:blank:]]*\("\(\([[:alnum:]]\|[[:blank:]]\)*\)"\)/\1\2\3\4<div\ class="col-2 col-sm-2 col-md-4"><h5\ class="text-center"\ style="color:\ @TITLE_COLOR@;">\6<\/h5><\/div>/
    # save all the titles for the footer
    h
    # select only the titles to be printed in the header
