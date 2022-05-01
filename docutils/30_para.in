@@ -62,7 +62,8 @@ x
 s/^\.sp.*$/<\/p><p\ style="margin:\ 0px\ @SECTION_INDENTATION@\ 16px;">/
 # append the current line to the current paragraph
 H
-# if it's the last line, put in a closing tag
+# if it's the last line, print the current paragraph with a closing tag
+${x; p}
 $a\
 <\/p>
 # recycle
