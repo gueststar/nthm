@@ -53,7 +53,7 @@ x
    # print the line
    p
    # erase the line
-   z
+   s/.*//
    # clear the paragraph by overwriting it with the erased line
    h
    # recycle

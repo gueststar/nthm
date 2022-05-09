@@ -57,7 +57,7 @@ x
    # print the line
    p
    # erase the line
-   z
+   s/.*//
    # clear the block by overwriting it with the erased line
    h
    # recycle

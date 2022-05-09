@@ -52,7 +52,7 @@ x
    # print it
    p}
 # erase the line
-z
+s/.*//
 # erase the block by overwriting it with the erased line
 h
 # recycle
