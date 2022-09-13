@@ -179,8 +179,9 @@ for more about the internals.
 
 * Why did you write this?
 
-    I wrote it partly to use in an upcoming project, partly as an
-    example of the kind of gigs I'm after, and partly for the
+    I wrote it partly to use in [an upcoming
+    project](https://github.com/gueststar/cru), partly as an example
+    of the kind of gigs I'm after, and partly for the
     challenge. Everybody with an opinion swears up and down that
     multithreaded code with shared data is practically impossible to
     get right except maybe by using the swearer's favorite language or
