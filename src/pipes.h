@@ -26,6 +26,7 @@ struct nthm_pipe_struct
 {
   int valid;                  // holds a muggle if any pthread operation or integrity check fails, MAGIC otherwise
   int killed;                 // set either by user code or by the reader yielding without having read from the pipe
+  int zombie;                 // not in use but unable to be freed because something points to it
   int yielded;                // set by the thread when its result is finished being computed
   pipe_list pool;             // root neighbors if the pipe is untethered
   pipe_list reader;           // a list of at most one pipe designated to read the result from this one

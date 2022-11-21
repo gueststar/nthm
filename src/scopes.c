@@ -232,6 +232,7 @@ _nthm_drained_by (s, d, err)
 
 
 
+
 void
 _nthm_vacate_scopes (s, err)
 	  nthm_pipe s;

@@ -154,7 +154,6 @@ _nthm_retired (p, err)
 {
   scope_stack e;
 
-  e = NULL;
   if ((! p) ? IER(88) : (p->valid != MAGIC) ? IER(89) : ((e = p->scope) ? 0 : IER(90)) ? (p->valid = MUGGLE(23)) : 0)
 	 return 0;
   if (e->enclosure ? IER(91) : ! _nthm_scope_exited (p, err))
@@ -302,7 +301,8 @@ _nthm_retirable (p, err)
 	 return 0;
   if ((pthread_mutex_lock (&(p->lock)) ? IER(120) : 0) ? (p->valid = MUGGLE(43)) : 0)
 	 return 0;
-  if (!(((e = p->scope) ? 0 : IER(121)) ? (p->valid = MUGGLE(44)) : (q = 0)))
-	 q = (e->enclosure ? 0 : e->blockers ? 0 : e->finishers ? 0 : p->placeholder ? 1 : p->yielded ? p->killed : 0);
-  return (((pthread_mutex_unlock (&(p->lock)) ? IER(122) : 0) ? (p->valid = MUGGLE(45)) : 0) ? 0 : q);
+  if (! (p->zombie))
+	 if (!(((e = p->scope) ? 0 : IER(121)) ? (p->valid = MUGGLE(44)) : (q = 0)))
+		q = (e->enclosure ? 0 : e->blockers ? 0 : e->finishers ? 0 : p->placeholder ? 1 : p->yielded ? p->killed : 0);
+  return (((pthread_mutex_unlock (&(p->lock)) ? IER(122) : 0) ? (p->valid = MUGGLE(45)) : 0) ? 0 : p->zombie ? 1 : q);
 }

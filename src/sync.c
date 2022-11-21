@@ -261,6 +261,8 @@ _nthm_thread_spec_of (source, operator, mutator, operand, write_only, err)
 
 
 
+
+
 void
 _nthm_unspecify (t, err)
 	  thread_spec t;
@@ -270,7 +272,7 @@ _nthm_unspecify (t, err)
 {
   if (t ? 0 : IER(314))
 	 return;
-  if ((!(t->pipe)) ? 1 : _nthm_retired (t->pipe, err) ? 1 : IER(315))
+  if ((! (t->pipe)) ? 1 : (t->pipe->zombie = 1))
 	 free (t);
 #ifdef MEMTEST
   pthread_mutex_lock (&memtest_lock);

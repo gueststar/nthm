@@ -29,7 +29,7 @@ struct pipe_list_struct
 {
   nthm_pipe pipe;
   pipe_list complement;       // points to a node in another list whose complement points back to this one
-  pipe_list *previous_pipe;   // points either to the next_pipe field in its predecessor
+  pipe_list *previous_pipe;   // points to the next_pipe field in its predecessor
   pipe_list next_pipe;
 };
 

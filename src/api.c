@@ -62,6 +62,8 @@ static int initial_error = 0;
 
 
 
+
+
 static void
 teardown ()
 
@@ -127,6 +129,8 @@ initialization ()
 
 
 
+
+
 nthm_pipe
 nthm_open (operator, operand, err)
 	  nthm_worker operator;
@@ -146,6 +150,8 @@ nthm_open (operator, operand, err)
 #define NO_MUTATOR NULL
 
   API_ENTRY_POINT(NULL);
+  if (*err)
+	 return NULL;
   if (*deadlocked ? IER(26) : (!(drain = _nthm_current_or_new_context (err))) ? 1 : (drain->valid != MAGIC) ? IER(27) : 0)
 	 return NULL;
   if (drain->yielded ? IER(28) : _nthm_heritably_killed_or_yielded (drain, err) ? (*err = (*err ? *err : NTHM_KILLED)) : 0)
