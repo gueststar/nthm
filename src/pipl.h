@@ -1,7 +1,7 @@
 /*
   nthm -- non-preemptive thread hierarchy manager
 
-  copyright (c) 2020-2022 Dennis Furey
+  copyright (c) 2020-2023 Dennis Furey
 
   Nthm is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -61,17 +61,21 @@ _nthm_severed (pipe_list t, int *err);
 extern int
 _nthm_freed (pipe_list r, int *err);
 
+// return the first pipe in a list f and bilaterally delist it
+extern nthm_pipe
+_nthm_popped (pipe_list *f, int *err);
+
 // remove an item from a pipe list, free it, and remove the reference from its complement
 extern nthm_pipe
-_nthm_unilaterally_delisted (pipe_list t, int *err);
+_nthm_unilaterally_delisted (pipe_list *t, int *err);
 
 // bilaterally delist and return the first pipe in a non-empty queue, or return NULL if the queue is empty
 extern nthm_pipe
-_nthm_dequeued (pipe_list f, pipe_list *q, int *err);
+_nthm_dequeued (pipe_list *f, pipe_list *q, int *err);
 
 // return r->complement->pipe while also delisting both r and its complement, which may be in a queue starting with f
 extern nthm_pipe
-_nthm_bilaterally_dequeued (pipe_list r, pipe_list f, pipe_list *q, int *err);
+_nthm_bilaterally_dequeued (pipe_list r, pipe_list *f, pipe_list *q, int *err);
 
 // free a pair of complementary unit pipe lists
 extern int

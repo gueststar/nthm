@@ -1,7 +1,7 @@
 /*
   nthm -- non-preemptive thread hierarchy manager
 
-  copyright (c) 2020-2022 Dennis Furey
+  copyright (c) 2020-2023 Dennis Furey
 
   Nthm is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -150,6 +150,9 @@ _nthm_globally_throw (err)
   if (pthread_mutex_unlock (&error_lock))
 	 deadlocked = 1;
 }
+
+
+
 
 
 

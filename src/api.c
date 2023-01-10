@@ -1,7 +1,7 @@
 /*
   nthm -- non-preemptive thread hierarchy manager
 
-  copyright (c) 2020-2022 Dennis Furey
+  copyright (c) 2020-2023 Dennis Furey
 
   Nthm is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -59,6 +59,8 @@ static int initial_error = 0;
 
 
 // --------------- initialization and teardown -------------------------------------------------------------
+
+
 
 
 
@@ -122,8 +124,6 @@ initialization ()
 
 
 // --------------- public-facing API -----------------------------------------------------------------------
-
-
 
 
 
@@ -218,7 +218,7 @@ nthm_send (mutator, operand, err)
 
 
 
-void*
+void *
 nthm_read (source, err)
 	  nthm_pipe source;
 	  int *err;
@@ -233,7 +233,7 @@ nthm_read (source, err)
 	 return NULL;
   if ((source->valid == MAGIC) ? 0 : (*err = (*err ? *err : NTHM_INVPIP)))
 	 return NULL;
-  if (!(drain = _nthm_current_context ()))
+  if (! (drain = _nthm_current_context ()))
 	 return _nthm_untethered_read (source, err);
   return (_nthm_tethered (source, drain, err) ? _nthm_tethered_read (source, err) : NULL);
 }
@@ -301,6 +301,7 @@ nthm_blocked (err)
 
 
 
+
 nthm_pipe
 nthm_select (err)
 	  int *err;
@@ -317,18 +318,18 @@ nthm_select (err)
   API_ENTRY_POINT(NULL);
   s = NULL;
   if (*deadlocked ? IER(42) : (!(d = _nthm_current_context ())) ? 1 : (d->valid == MAGIC) ? 0 : IER(43))
-	 return NULL;
-  if ((pthread_mutex_lock (&(d->lock)) ? IER(44) : 0) ? (d->valid = MUGGLE(6)) : (k = 0))
-	 return NULL;
-  if (((e = d->scope) ? 0 : IER(45)) ? (d->valid = MUGGLE(7)) : 0)
 	 goto a;
-  for (; (k = d->killed) ? 0 : (s = _nthm_dequeued (e->finishers, &(e->finisher_queue), err)) ? 0 : ! ! (e->blockers);)
+  if ((pthread_mutex_lock (&(d->lock)) ? IER(44) : 0) ? (d->valid = MUGGLE(6)) : (k = 0))
+	 goto a;
+  if (((e = d->scope) ? 0 : IER(45)) ? (d->valid = MUGGLE(7)) : 0)
+	 goto b;
+  for (; (k = d->killed) ? 0 : (s = _nthm_dequeued (&(e->finishers), &(e->finisher_queue), err)) ? 0 : ! ! (e->blockers);)
 	 if ((pthread_cond_wait (&(d->progress), &(d->lock)) ? IER(46) : 0) ? (d->valid = MUGGLE(8)) : 0)
 		break;
- a: if ((pthread_mutex_unlock (&(d->lock)) ? IER(47) : 0) ? (d->valid = MUGGLE(9)) : 0)
-	 return NULL;
+ b: if ((pthread_mutex_unlock (&(d->lock)) ? IER(47) : 0) ? (d->valid = MUGGLE(9)) : 0)
+	 goto a;
   *err = (*err ? *err : k ? NTHM_KILLED : 0);
-  return s;
+ a: return s;
 }
 
 
@@ -420,7 +421,7 @@ nthm_truncated (err)
   if ((pthread_mutex_lock (&(source->lock)) ? IER(56) : 0) ? (source->valid = MUGGLE(16)) : 0)
 	 return 0;
   if ((source->scope ? 0 : IER(57)) ? (source->valid = MUGGLE(17)) : 0)
-	 return ((pthread_mutex_unlock (&(source->lock)) ? IER(58) : 0) ? ((unsigned) !(source->valid = MUGGLE(18))) : 0);
+	 return ((pthread_mutex_unlock (&(source->lock)) ? IER(58) : 0) ? ((unsigned) ! (source->valid = MUGGLE(18))) : 0);
   t = source->scope->truncation;
   if ((pthread_mutex_unlock (&(source->lock)) ? IER(59) : 0) ? (source->valid = MUGGLE(19)) : 0)
 	 return 0;
@@ -442,7 +443,7 @@ nthm_kill (source, err)
 	  // Tell a pipe to pack it in and make it disappear.
 {
   API_ENTRY_POINT();
-  if ((!source) ? (*err = (*err ? *err : NTHM_NULPIP)) : 0)
+  if ((! source) ? (*err = (*err ? *err : NTHM_NULPIP)) : 0)
 	 return;
   if ((source->valid != MAGIC) ? (*err = (*err ? *err : NTHM_INVPIP)) : ! _nthm_killable (source, err))
 	 IER(60);

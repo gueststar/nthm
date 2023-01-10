@@ -1,7 +1,7 @@
 /*
   nthm -- non-preemptive thread hierarchy manager
 
-  copyright (c) 2020-2022 Dennis Furey
+  copyright (c) 2020-2023 Dennis Furey
 
   Nthm is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -179,7 +179,6 @@ _nthm_pushed (t, b, err)
 
 
 
-
 int
 _nthm_enqueued (t, f, q, err)
 	  pipe_list t;
@@ -192,7 +191,7 @@ _nthm_enqueued (t, f, q, err)
 {
   pipe_list *p;
 
-  if ((! f) ? IER(134) : (! q) ? IER(135) : ((! *f) != ! *q) ? IER(136) : (!*q) ? 0 : (*q)->next_pipe ? IER(137) : 0)
+  if ((! f) ? IER(134) : (! q) ? IER(135) : ((! *f) != ! *q) ? IER(136) : (! *q) ? 0 : (*q)->next_pipe ? IER(137) : 0)
 	 return 0;
   return ((! _nthm_pushed (t, p = (*q ? &((*q)->next_pipe) : f), err)) ? 0 : (*q = *p) ? 1 : ! IER(138));
 }
@@ -267,46 +266,49 @@ _nthm_freed (r, err)
 
 
 
-
 nthm_pipe
 _nthm_unilaterally_delisted (t, err)
-	  pipe_list t;
+	  pipe_list *t;
 	  int *err;
 
 	  // Remove an item from a pipe list, free it, and remove the
 	  // reference from its complement.
 {
   nthm_pipe p;
+  pipe_list o;
 
-  if ((p = (t ? t->pipe : NULL)) ? 0 : IER(145))
+  if (t ? 0 : IER(145))
 	 return NULL;
-  return ((_nthm_severed (t, err) ? _nthm_freed (t, err) : 0) ? p : NULL);
+  if (! (p = (*t ? (*t)->pipe : NULL)))
+	 return NULL;
+  _nthm_severed (o = *t, err);
+  _nthm_freed (o, err);
+  *t = NULL;
+  return p;
 }
 
 
 
 
 
-
-
-
-
-
-static nthm_pipe
-popped (f, err)
-	  pipe_list f;
+nthm_pipe
+_nthm_popped (f, err)
+	  pipe_list *f;
 	  int *err;
 
 	  // Return the first pipe in a list f and bilaterally delist it.
 {
-  if ((!f) ? IER(146) : ! _nthm_unilaterally_delisted (f->complement, err))
+  pipe_list o;
+  nthm_pipe p;
+
+  if ((! f) ? IER(146) : (! *f) ? IER(147) : 0)
 	 return NULL;
-  return _nthm_unilaterally_delisted (f, err);
+  o = (*f)->next_pipe;
+  _nthm_unilaterally_delisted (&((*f)->complement), err);
+  p = _nthm_unilaterally_delisted (f, err);
+  *f = o;
+  return p;
 }
-
-
-
-
 
 
 
@@ -315,7 +317,7 @@ popped (f, err)
 
 nthm_pipe
 _nthm_dequeued (f, q, err)
-	  pipe_list f;
+	  pipe_list *f;
 	  pipe_list *q;
 	  int *err;
 
@@ -324,11 +326,11 @@ _nthm_dequeued (f, q, err)
 {
   nthm_pipe p;
 
-  if ((! q) ? IER(147) : ((! f) != ! *q) ? IER(148) : ! f)
+  if ((! q) ? IER(148) : (! f) ? IER(149) : ((! *f) != ! *q) ? IER(150) : ! *f)
 	 return NULL;
-  if (f != *q)
-	 return popped (f, err);
-  if ((p = popped (f, err)))
+  if (*f != *q)
+	 return _nthm_popped (f, err);
+  if ((p = _nthm_popped (f, err)))
 	 *q = NULL;
   return p;
 }
@@ -344,7 +346,7 @@ _nthm_dequeued (f, q, err)
 nthm_pipe
 _nthm_bilaterally_dequeued (r, f, q, err)
 	  pipe_list r;
-	  pipe_list f;
+	  pipe_list *f;
 	  pipe_list *q;
 	  int *err;
 
@@ -353,20 +355,19 @@ _nthm_bilaterally_dequeued (r, f, q, err)
   nthm_pipe p;
   pipe_list c;
 
-  c = NULL;
-  if ((! q) ? IER(149) : (! r) ? IER(150) : (c = r->complement) ? 0 : IER(151))
+  if ((! f) ? IER(151) : (! q) ? IER(152) : (! r) ? IER(153) : 0)
 	 return NULL;
-  if (c == f)
+  c = r->complement;
+  if (c == *f)
 	 return _nthm_dequeued (f, q, err);
   if (c != *q)
-	 return popped (c, err);
-  if (f ? 0 : IER(152))
+	 return _nthm_popped (&c, err);
+  if (*f ? 0 : IER(154))
 	 return NULL;
-  p = popped (*q, err);
-  for (*q = f; (*q)->next_pipe; *q = (*q)->next_pipe);
+  p = _nthm_popped (q, err);
+  for (*q = *f; (*q)->next_pipe; *q = (*q)->next_pipe);
   return p;
 }
-
 
 
 
@@ -384,7 +385,11 @@ _nthm_bilaterally_freed (r, b, err)
 
 	  // Free a pair of complementary unit pipe lists.
 {
-  if ((! r) ? IER(153) : (! b) ? IER(154) : (r->complement != b) ? IER(155) : (b->complement != r) ? IER(156) : 0)
+  if ((! r) ? IER(155) : (! b) ? IER(156) : (r->complement != b) ? IER(157) : (b->complement != r) ? IER(158) : 0)
 	 return 0;
-  return ((_nthm_freed (r, err) ? 1 : IER(157)) ? _nthm_freed (b, err) : 0);
+  if (! _nthm_freed (r, err))
+	 return 0;
+  if (! _nthm_freed (b, err))
+	 return 0;
+  return 1;
 }

@@ -1,7 +1,7 @@
 /*
   nthm -- non-preemptive thread hierarchy manager
 
-  copyright (c) 2020-2022 Dennis Furey
+  copyright (c) 2020-2023 Dennis Furey
 
   Nthm is free software: you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -90,10 +90,10 @@ _nthm_stack_limited_thread_type (a, err)
 	  // systems, use small stacks.
 
 {
-  if ((!a) ? IER(296) : pthread_attr_init (a) ? IER(297) : 0)
+  if ((!a) ? IER(297) : pthread_attr_init (a) ? IER(298) : 0)
 	 return 0;
 #ifdef USE_SMALL_STACKS
-  if (pthread_attr_setstacksize (a, PTHREAD_STACK_MIN + NTHM_STACK_MIN) ? IER(298) : 0)
+  if (pthread_attr_setstacksize (a, PTHREAD_STACK_MIN + NTHM_STACK_MIN) ? IER(299) : 0)
 	 {
 		pthread_attr_destroy (a);
 		return 0;
@@ -115,21 +115,21 @@ _nthm_open_sync (err)
 {
   pthread_mutexattr_t a;
 
-  if (deadlocked ? IER(299) : ! _nthm_error_checking_mutex_type (&a, err))
+  if (deadlocked ? IER(300) : ! _nthm_error_checking_mutex_type (&a, err))
 	 return 0;
-  if (pthread_mutex_init (&starter_lock, &a) ? IER(300) : 0)
+  if (pthread_mutex_init (&starter_lock, &a) ? IER(301) : 0)
 	 goto a;
-  if (pthread_mutex_init (&runner_lock, &a) ? IER(301) : 0)
+  if (pthread_mutex_init (&runner_lock, &a) ? IER(302) : 0)
 	 goto b;
 #ifdef MEMTEST
-  if (pthread_mutex_init (&memtest_lock, &a) ? IER(302) : 0)
+  if (pthread_mutex_init (&memtest_lock, &a) ? IER(303) : 0)
 	 goto c;
 #endif
-  if ((pthread_mutexattr_destroy (&a) ? 1 : pthread_cond_init (&last_runner, NULL)) ? IER(303) : 0)
+  if ((pthread_mutexattr_destroy (&a) ? 1 : pthread_cond_init (&last_runner, NULL)) ? IER(304) : 0)
 	 goto d;
-  if (pthread_cond_init (&started, NULL) ? IER(304) : 0)
+  if (pthread_cond_init (&started, NULL) ? IER(305) : 0)
 	 goto e;
-  if (pthread_cond_init (&finished, NULL) ? IER(305) : 0)
+  if (pthread_cond_init (&finished, NULL) ? IER(306) : 0)
 	 goto f;
   return 1;
  f: pthread_cond_destroy (&started);
@@ -169,18 +169,18 @@ release_pthread_resources (err)
 {
 #ifdef MEMTEST
   if (pthread_mutex_destroy (&memtest_lock))
-	 IER(306);
+	 IER(307);
 #endif
   if (pthread_mutex_destroy (&starter_lock))
-	 IER(307);
-  else if (pthread_cond_destroy (&started))
 	 IER(308);
-  if (pthread_mutex_destroy (&runner_lock) ? IER(309) : 0)
+  else if (pthread_cond_destroy (&started))
+	 IER(309);
+  if (pthread_mutex_destroy (&runner_lock) ? IER(310) : 0)
 	 return;
   if (pthread_cond_destroy (&finished))
-	 IER(310);
-  if (pthread_cond_destroy (&last_runner))
 	 IER(311);
+  if (pthread_cond_destroy (&last_runner))
+	 IER(312);
 }
 
 
@@ -202,7 +202,7 @@ _nthm_close_sync ()
   _nthm_synchronize (&err);
   if (! deadlocked)
 	 release_pthread_resources (&err);
-  _nthm_globally_throw (err ? err : deadlocked ? THE_IER(312) : 0);
+  _nthm_globally_throw (err ? err : deadlocked ? THE_IER(313) : 0);
 #ifdef MEMTEST
   if (thread_specs)
 	 fprintf (stderr, "%lu unreclaimed thread specification%s\n", thread_specs, thread_specs == 1 ? "" : "s");
@@ -239,7 +239,7 @@ _nthm_thread_spec_of (source, operator, mutator, operand, write_only, err)
 
   t = NULL;
   if (source ? ((t = (thread_spec) malloc (sizeof (*t))) ? 0 : (*err = (*err ? *err : ENOMEM))) : 1)
-	 if (source ? (_nthm_retired (source, err) ? 1 : IER(313)) : 1)
+	 if (source ? (_nthm_retired (source, err) ? 1 : IER(314)) : 1)
 		return NULL;
   memset (t, 0, sizeof (*t));
   t->write_only = write_only;
@@ -270,7 +270,7 @@ _nthm_unspecify (t, err)
 
 	  // Free a thread specification structure.
 {
-  if (t ? 0 : IER(314))
+  if (t ? 0 : IER(315))
 	 return;
   if ((! (t->pipe)) ? 1 : (t->pipe->zombie = 1))
 	 free (t);

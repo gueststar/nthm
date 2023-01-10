@@ -40,7 +40,7 @@ approximate_sum_of_interval (x, err)
 		  {
 			 if (start + count > x->start + x->count)
 				count = x->start + x->count - start;
-			 if (!(subinterval = (interval) malloc (sizeof (*subinterval))))
+			 if (! (subinterval = (interval) malloc (sizeof (*subinterval))))
 				*err = ENOMEM;
 			 else
 				{

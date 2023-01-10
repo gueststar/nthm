@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.13.4)
 # set(CMAKE_C_COMPILER gcc)
 
 project(
-  nthm VERSION 0.10.11
+  nthm VERSION 0.10.12
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -58,6 +58,12 @@ elseif (CMAKE_C_COMPILER_ID MATCHES GNU)
 else()
    message (STATUS "unknown C compiler ${CMAKE_C_COMPILER_ID}; build errors possible")
 endif()
+
+# The option -g can be used to make valgrind display line
+# numbers. This option should be commented out for production code
+# builds.
+
+# add_compile_options (-g)
 
 # ------------- markdown documents -----------
 

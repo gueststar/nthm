@@ -27,12 +27,14 @@ main(argc, argv)
 	  char **argv;
 {
   int err;
+  nthm_pipe p;
   uintptr_t x;
   uintptr_t result;
 
   err = 0;
   x = EXPECTED_INPUT;
-  result = (uintptr_t) nthm_read (nthm_open ((nthm_worker) &comparitor, (void *) x, &err), &err);
+  p = nthm_open ((nthm_worker) &comparitor, (void *) x, &err);
+  result = (uintptr_t) nthm_read (p, &err);
   if (err ? 0 : result)
 	 {
 		printf ("pipein detected no errors\n");
