@@ -131,6 +131,7 @@ initialization ()
 
 
 
+
 nthm_pipe
 nthm_open (operator, operand, err)
 	  nthm_worker operator;
@@ -235,7 +236,9 @@ nthm_read (source, err)
 	 return NULL;
   if (! (drain = _nthm_current_context ()))
 	 return _nthm_untethered_read (source, err);
-  return (_nthm_tethered (source, drain, err) ? _nthm_tethered_read (source, err) : NULL);
+  if (_nthm_tethered (source, drain, err))
+	 return _nthm_tethered_read (source, err);
+  return NULL;
 }
 
 
@@ -292,8 +295,6 @@ nthm_blocked (err)
 	 blocked = (e->finishers ? 0 : ! ! (e->blockers));
   return (((pthread_mutex_unlock (&(drain->lock)) ? IER(41) : 0) ? (drain->valid = MUGGLE(5)) : 0) ? 0 : blocked);
 }
-
-
 
 
 

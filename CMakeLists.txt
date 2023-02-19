@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.13.4)
 # set(CMAKE_C_COMPILER gcc)
 
 project(
-  nthm VERSION 0.10.12
+  nthm VERSION 0.10.13
   DESCRIPTION "non-preemptive thread hierarchy manager"
   HOMEPAGE_URL https://github.com/gueststar/nthm
   LANGUAGES C)
@@ -49,7 +49,7 @@ elseif (CMAKE_C_COMPILER_ID MATCHES GNU)
  	 -Wnull-dereference -Wstack-protector -Wtrampolines -Walloca -Wvla
  	 -Warray-bounds=2 -Wimplicit-fallthrough=3 -Wtraditional-conversion
  	 -Wshift-overflow=2 -Wcast-qual -Wstringop-overflow=4 -Wconversion
- 	 -Warith-conversion -Wlogical-op -Wduplicated-cond
+ 	 -Wlogical-op -Wduplicated-cond
  	 -Wduplicated-branches -Wformat-signedness -Wshadow
  	 -Wstrict-overflow=4 -Wundef -Wswitch-default
  	 -Wswitch-enum -Wstack-usage=1000000 -Wcast-align=strict
