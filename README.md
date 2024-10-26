@@ -1,5 +1,8 @@
 # `nthm` -- Non-preemptive Thread Hierarchy Manager
 
+Note: This repo is no longer maintained, having been migrated
+to [Codeberg](https://codeberg.org/metroman/nthm).
+
 `Nthm` (pronounced like "anthem") is a C library intended for
 applications involving dynamic hierarchies of threads creating other
 threads that would be difficult or impossible to plan at compile-time.
